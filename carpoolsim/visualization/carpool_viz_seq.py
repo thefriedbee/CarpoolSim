@@ -16,7 +16,6 @@ def plot_seq(
         ctd: bool = False,
         color: str = 'red',
         linewidth: int = 3,
-        fig: bool = None,
         ax: plt.Axes = None,
         plt_arrow: bool = True,
         arrow_color: str = 'black',
@@ -106,4 +105,4 @@ def plot_seq(
     if skeleton is not None:
         skeleton_gray = mpatches.Patch(color='gray', label='skeleton network')
         handles.append(skeleton_gray)
-    return fig, ax, handles
+    return plt.gcf(), ax, handles

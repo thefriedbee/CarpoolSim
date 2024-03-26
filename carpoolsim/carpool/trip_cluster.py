@@ -113,7 +113,7 @@ class TripCluster:
         self.trip_summary_df = None  # a DataFrame stores before after numbers for summarized statistics for the cluster
 
     # connect to database and quickly check OD shortest path
-    def query_od_info(self, o_taz, d_taz):
+    def query_od_info(self, o_taz: str | int, d_taz: str | int):
         """
         # returned: origin ID, destination ID, distance, path used
         :param o_taz: origin TAZ
@@ -125,7 +125,7 @@ class TripCluster:
         row_path = results[3]
         return str(o_taz), str(d_taz), row_dist, row_path
 
-    def get_path_distance_and_tt(self, nodes):
+    def get_path_distance_and_tt(self, nodes: list[str]):
         """
         A helper function to get driving path given a set of network nodes.
         :param nodes: a list of traveling network node id
@@ -208,7 +208,12 @@ class TripCluster:
         tt, dst = self.get_path_distance_and_tt(pth_nodes)
         return pth_nodes, tt, dst
 
-    def generate_pnr_trip_map_filt(self, delta=15, gamma=1.5, trips=None):
+    def generate_pnr_trip_map_filt(
+            self,
+            delta: float = 15,
+            gamma: float = 1.5,
+            trips: pd.DataFrame | None = None,
+    ):
         """
         :param delta: maximum reroute time (in minutes) acceptable for the driver
         :param gamma: the maximum ratio of extra travel time over driver's original travel time
@@ -248,7 +253,7 @@ class TripCluster:
         self.cp_pnr_matrix = (self.cp_pnr_matrix &
                               temp_cp_pnr_matrix[:n_rows, :]).astype(np.bool_)
 
-    def compute_pnr_access(self, trip_id, station_id):
+    def compute_pnr_access(self, trip_id: int, station_id: int) -> None:
         """
         Compute access time to PNR station
         :return:
@@ -300,8 +305,13 @@ class TripCluster:
         return lst[i]
 
     def compute_01_matrix_to_station_p1(
-            self, threshold_dist=5280 * 5, mu1=1.3, mu2=0.3, use_mu2=True,
-            trips=None, print_mat=True
+            self,
+            threshold_dist: float = 5280 * 5,
+            mu1: float = 1.3,
+            mu2: float = 0.3,
+            use_mu2: bool =True,
+            trips: pd.DataFrame | None =None,
+            print_mat: bool = True,
     ):
         """
         For each trip, compute the parking lots that can be used as the "meetings point" for carpooled trip.
@@ -378,7 +388,11 @@ class TripCluster:
                 print("pnr 0-1 matrix total pass is (after mu2 filter):", self.pnr_01_matrix.sum())
                 # print(self.pnr_01_matrix[:8, :8])
 
-    def compute_01_matrix_to_station_p2(self, delta=15, gamma=1.5):
+    def compute_01_matrix_to_station_p2(
+            self,
+            delta: float = 15,
+            gamma: float = 1.5,
+    ) -> None:
         """
         Make sure each SOV trip can go through PNR station without too much extra costs
         :param delta: maximum reroute time (in minutes) acceptable for the driver
@@ -391,8 +405,12 @@ class TripCluster:
         self.generate_pnr_trip_map_filt(delta=delta, gamma=gamma)
 
     def compute_carpool(
-            self, int_idx1, int_idx2,
-            print_dist=False, fill_mat=True, fixed_role=False
+            self,
+            int_idx1: int,
+            int_idx2: int,
+            print_dist: bool = False,
+            fill_mat: bool = True,
+            fixed_role: bool = False,
     ):
         """
         Given the integer index of two trips (of the trip DataFrame self.df),
@@ -476,9 +494,12 @@ class TripCluster:
         return (d1_ml_p1 + d1_ml_p2 + d1_ml_p3), (d1_p_p1[:-1] + d1_p_p2[:-1] + d1_p_p3)
 
     def compute_carpool_pnr(
-            self, int_idx1, int_idx2,
-            print_dist=False, fill_mat=True, fixed_role=False,
-            trips=None
+            self,
+            int_idx1: int, int_idx2: int,
+            print_dist: bool = False,
+            fill_mat: bool = True,
+            fixed_role: bool = False,
+            trips: pd.DataFrame | None = None
     ):
         """
         Given the integer index of two trips (of the trip DataFrame self.df),
@@ -588,7 +609,8 @@ class TripCluster:
 
     def compute_depart_01_matrix_pre_pnr(
             self,
-            Delta1=15, default_rule=False
+            Delta1: float = 15,
+            default_rule: bool = False,
     ):
         """
         For park and ride, the requirements are:
@@ -627,7 +649,9 @@ class TripCluster:
                                   (np.absolute(mat) <= Delta1)).astype(np.bool_)
 
     def compute_depart_01_matrix_pre(
-            self, Delta1=15, default_rule=True
+            self,
+            Delta1: float = 15,
+            default_rule: bool = True,
     ):
         """
         Required: must run self.compute_diagonal function to compute diagonal travel information?
@@ -664,7 +688,10 @@ class TripCluster:
                               (np.absolute(mat) <= Delta1)).astype(np.bool_)
 
     def compute_depart_01_matrix_post_pnr(
-            self, Delta2=10, Gamma=0.2, default_rule=True
+            self,
+            Delta2: float = 10,
+            Gamma: float = 0.2,
+            default_rule: bool = True,
     ):
         """
         Filter PNR trips considering driver's waiting time is limited
@@ -712,7 +739,10 @@ class TripCluster:
                                   (np.absolute(mat/passenger_time) <= Gamma).astype(np.bool_))
 
     def compute_depart_01_matrix_post(
-            self, Delta2=10, Gamma=0.2, default_rule=True
+            self,
+            Delta2: float = 10,
+            Gamma: float = 0.2,
+            default_rule: bool = True,
     ):
         """
         After tt_matrix_p1 is computed, filter by maximum waiting time for the driver at pickup location
@@ -745,7 +775,11 @@ class TripCluster:
                               (np.absolute(wait_time_mat/passenger_time) <= Gamma)).astype(np.bool_)
 
     def compute_pickup_01_matrix(
-            self, threshold_dist=5280 * 5, mu1=1.5, mu2=0.1, use_mu2=True
+            self,
+            threshold_dist: float = 5280 * 5,
+            mu1: float = 1.5,
+            mu2: float = 0.1,
+            use_mu2: bool = True,
     ):
         """
         Compute feasibility matrix based on whether one can pick up/ drop off passengers.
@@ -821,7 +855,11 @@ class TripCluster:
                               (backward_index <= mu2)).astype(bool)
 
     def compute_reroute_01_matrix_pnr(
-            self, delta=15, gamma=1.5, ita_pnr=0.5, print_mat=True
+            self,
+            delta: float = 15,
+            gamma: float = 1.5,
+            ita_pnr: float = 0.5,
+            print_mat: bool = True
     ):
         """
         Compute carpool-able matrix considering total reroute time (non-shared trip segments)
@@ -870,8 +908,11 @@ class TripCluster:
         self.ml_pnr_matrix[self.cp_pnr_matrix == 0] = np.nan
 
     def compute_reroute_01_matrix(
-            self, delta=15, gamma=1.5, ita=0.5
-    ):
+            self,
+            delta: float = 15,
+            gamma: float = 1.5,
+            ita: float = 0.5,
+    ) -> None:
         """
         Compute carpool-able matrix considering total reroute time (non-shared trip segments)
         This cannot be estimated before travel time matrix (self.tt_matrix) is fully computed
@@ -906,7 +947,7 @@ class TripCluster:
         self.tt_matrix[self.cp_matrix == 0] = np.nan
         self.ml_matrix[self.cp_matrix == 0] = np.nan
 
-    def compute_carpoolable_trips_pnr(self, reset_off_diag=False):
+    def compute_carpoolable_trips_pnr(self, reset_off_diag: bool = False) -> None:
         """
         Instead of computing all combinations, only compute all carpool-able trips.
         :param reset_off_diag: if True, reset all carpool trips information EXCEPT drive alone trips
@@ -928,7 +969,10 @@ class TripCluster:
         for index in indexes_pairs:
             self.compute_carpool_pnr(index[0], index[1], fixed_role=True)
 
-    def compute_carpoolable_trips(self, reset_off_diag=False):
+    def compute_carpoolable_trips(
+            self,
+            reset_off_diag: bool = False
+    ) -> None:
         """
         Instead of computing all combinations, only compute all carpool-able trips.
         :param reset_off_diag: if True, reset all carpool trips information EXCEPT drive alone trips
@@ -951,7 +995,11 @@ class TripCluster:
         for index in indexes_pairs:
             self.compute_carpool(index[0], index[1], fixed_role=True)
 
-    def compute_optimal_lp(self, mute=True, use_both=False):
+    def compute_optimal_lp(
+            self,
+            mute: bool = True,
+            use_both: bool = False,
+    ) -> None:
         """
         Use Gurobipy to solve for optimal solutions
         :param mute: if True, don't print output results.
@@ -1020,7 +1068,12 @@ class TripCluster:
         # get results
         self.result_lst = [p for p in tps if x[p].x > 0.5]
 
-    def evaluate_individual_trips_both(self, verbose=False, use_bipartite=False, trips=None):
+    def evaluate_individual_trips_both(
+            self,
+            verbose: bool = False,
+            use_bipartite: bool = False,
+            trips: pd.DataFrame | None = None,
+    ):
         """
         After getting optimized results, expand the trip column with before after information for each person.
         This code works for general cases.
@@ -1108,7 +1161,11 @@ class TripCluster:
         self.trip_summary_df = self.trip_summary_df.loc[index_paired, :]
         return self.trip_summary_df
 
-    def evaluate_individual_trips(self, verbose=False, use_bipartite=False):
+    def evaluate_individual_trips(
+            self,
+            verbose: bool = False,
+            use_bipartite: bool = False
+    ) -> pd.DataFrame:
         """
         After getting optimized results, expand the trip column with before after information for each person.
         This code works for general cases.
@@ -1186,7 +1243,11 @@ class TripCluster:
         self.trip_summary_df = self.trip_summary_df.loc[index_paired, :]
         return self.trip_summary_df
 
-    def evaluate_trips(self, verbose=False, use_bipartite=False):
+    def evaluate_trips(
+            self,
+            verbose: bool = False,
+            use_bipartite: bool = False
+    ):
         """
         Evaluate the assignment's performances. Interested in:
         (1) The changes in total vehicular travel time
@@ -1259,7 +1320,12 @@ class TripCluster:
 
         return tot_count, num_paired, ori_tt, new_tt, ori_ml, new_ml, sid
 
-    def plot_single_trip(self, intind1, intind2, network_df=None, fixed_role=False):
+    def plot_single_trip(
+            self,
+            intind1: str, intind2: str,
+            network_df: pd.DataFrame | None = None,
+            fixed_role: bool = False,
+    ):
         """
         Plot carpool trip for a single trip corresponding to the matrix position (ind 1, ind 2)
         Plot three carpool plans at once. A picks up B, B picks up A, one plot showing both schemes.
@@ -1355,18 +1421,11 @@ class TripCluster:
         return fig1, fig2
 
     def plot_single_trip_pnr(
-            self, intind1, intind2,
-            trips=None, network_df=None,
-            fixed_role=False,
+            self, intind1: int, intind2: int,
+            trips: pd.DataFrame | None = None,
+            network_df: pd.DataFrame | None = None,
+            fixed_role: bool = False,
     ):
-        """
-        Plot park and ride trip
-        :param intind1: integer index 1
-        :param intind2: integer index 2
-        :param network_df:
-        :param fixed_role:
-        :return:
-        """
         idx1, idx2 = self.int2idx[intind1], self.int2idx[intind2]
         if trips is None:
             trips = self.trips
@@ -1406,14 +1465,14 @@ class TripCluster:
         fig1, ax1, h2 = plot_seq(
             trip_seq=links_1p, gpd_df=network_df, ctd=True,
             linewidth=10, color='blue',
-            fig=fig1, ax=ax1, plt_arrow=False
+            ax=ax1, plt_arrow=False
         )
 
         # (trip segment 2): from meet point --> end
         fig1, ax1, h2 = plot_seq(
             trip_seq=links_1d1, gpd_df=network_df, ctd=True,
             linewidth=20, color='green',
-            fig=fig1, ax=ax1, plt_arrow=False
+            ax=ax1, plt_arrow=False
         )
 
         rec_driver = [idx1, "pnr_driver", links_1d0+links_1d1+links_1d2]
@@ -1453,12 +1512,12 @@ class TripCluster:
         fig2, ax2, h4 = plot_seq(
             trip_seq=links_2p, gpd_df=network_df, ctd=True,
             linewidth=10, color='blue', arrow_color='blue',
-            fig=fig2, ax=ax2, plt_arrow=False
+            ax=ax2, plt_arrow=False
         )
         fig2, ax2, h5 = plot_seq(
             trip_seq=links_2d1, gpd_df=network_df, ctd=True,
             linewidth=20, color='green',
-            fig=fig2, ax=ax2, plt_arrow=False
+            ax=ax2, plt_arrow=False
         )
 
         # plt.title("Driver: {}; Passenger: {} (Park and Ride)".format(intind2, intind1))
@@ -1474,7 +1533,7 @@ class TripCluster:
         ax2.axis("off")
         return (fig1, ax1), (fig2, ax2)
 
-    def compute_optimal_bipartite(self):
+    def compute_optimal_bipartite(self) -> None:
         """
         Solve the pairing problem using traditional bipartite method.
         This is to compare results with that of linear programming one
@@ -1485,9 +1544,8 @@ class TripCluster:
         # bipartite_obj = tg.CarpoolBipartite(self.cp_matrix, self.tt_matrix)
         num_pair, pairs = bipartite_obj.solve_bipartite_conflicts_naive()
         self.result_lst_bipartite = pairs
-        return None
 
-    def _generate_choice_matrix(self, cp_mat1, cp_mat2):
+    def _generate_choice_matrix(self, cp_mat1: np.ndarray, cp_mat2: np.ndarray):
         """
         TODO: add other two modes (prioritize to direct carpool, prioritize to pnr carpool)
         Generate choice matrix by comparing two matrices
@@ -1525,7 +1583,7 @@ class TripCluster:
             choice_mat[ind_mat2_one] = 1
         return choice_mat
 
-    def combine_pnr_carpool(self, include_direct=True, print_mat=True):
+    def combine_pnr_carpool(self, include_direct: bool = True, print_mat: bool = True):
         """
         Generate a final matrix combining two modes: direct pickup and pickup at PNR station
         If (i, j) form a carpool either by simple carpool or PNR,
@@ -1562,10 +1620,10 @@ class TripCluster:
             print(self.choice_matrix[:8, :8])
 
     def compute_in_one_step_pnr(
-            self, mu1=1.3, mu2=0.1, dst_max=5 * 5280,
-            Delta1=15, Delta2=10, Gamma=0.2,  # for depart diff and wait time
-            delta=15, gamma=1.5, ita=0.8, ita_pnr=0.5,
-            include_direct=True, print_mat=True
+            self, mu1: float = 1.3, mu2: float = 0.1, dst_max: float = 5 * 5280,
+            Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
+            delta: float = 15, gamma: float =1.5, ita: float = 0.8, ita_pnr: float = 0.5,
+            include_direct: bool = True, print_mat: bool = True,
     ):
         """
         For the park and ride case, use the same set of filtering parameters for normal case (6 steps).
@@ -1647,7 +1705,7 @@ class TripCluster:
             print("combined matrix (after step 7):", self.cp_matrix_all.sum())
             print(self.cp_matrix_all[:8, :8])
 
-    def combine_simple_carpool(self, print_mat=True):
+    def combine_simple_carpool(self, print_mat: bool = True):
         # 0 denotes simple carpool; 1 denotes PNR
         # for DC mode only, all chose to use DC mode
         self.choice_matrix = np.full(self.cp_matrix.shape, 0, dtype="int8")
@@ -1660,7 +1718,14 @@ class TripCluster:
             ))
             print(self.choice_matrix[:8, :8])
 
-    def optimize_in_one_step(self, rt_bipartite, rt_LP, verbose, plot_all, mode):
+    def optimize_in_one_step(
+            self,
+            rt_bipartite: bool,
+            rt_LP: bool,
+            verbose: bool,
+            plot_all: bool,
+            mode: int,
+    ):
         lp_summ, lp_summ_ind, bt_summ, bt_summ_ind = None, None, None, None
         if rt_LP:
             self.compute_optimal_lp()
@@ -1735,7 +1800,11 @@ class TripCluster:
                         self._save_travel_path(travel_paths, folder_name)
         return lp_summ, lp_summ_ind, bt_summ, bt_summ_ind
 
-    def _save_travel_path(self, travel_paths, folder_name):
+    def _save_travel_path(
+            self,
+            travel_paths: str,
+            folder_name: str,
+    ) -> None:
         travel_paths = pd.DataFrame(
             travel_paths,
             columns=["person_idx", "role", "travel_path"]
@@ -1748,18 +1817,12 @@ class TripCluster:
             )
 
     def compute_in_one_step(
-            self, print_mat=False,
-            mu1=1.5, mu2=0.1, dst_max=5 * 5280,
-            Delta1=15, Delta2=10, Gamma=0.2,  # for depart diff and wait time
-            delta=15, gamma=1.5, ita=0.5, skip_combine=False
+            self,  print_mat: bool = False,
+            mu1: float = 1.5, mu2: float = 0.1, dst_max: float = 5 * 5280,
+            Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
+            delta: float = 15, gamma: float = 1.5, ita: float = 0.5,
+            skip_combine: bool = False
     ):
-        """
-        One function to finish all steps after init the object.
-        TODO: use max-flow to solve best utility plan, and use greedy algorithm to solve conflicts
-        :param rt_bipartite: if True, solve optimal for bipartite
-        :param rt_LP: if True, solve optimal for LP
-        :return:
-        """
         # step 1. check departure time difference to filter
         self.compute_depart_01_matrix_pre(Delta1=Delta1)
         # step 2. a set of filter based on Euclidean distance between coordinates
