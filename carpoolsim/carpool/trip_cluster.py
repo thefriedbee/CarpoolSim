@@ -1539,9 +1539,7 @@ class TripCluster:
         This is to compare results with that of linear programming one
         :return:
         """
-        # bipartite_obj = tg.GFG_square(self.cp_matrix)
         bipartite_obj = tg.CarpoolBipartite(self.cp_matrix_all, self.tt_matrix_all)
-        # bipartite_obj = tg.CarpoolBipartite(self.cp_matrix, self.tt_matrix)
         num_pair, pairs = bipartite_obj.solve_bipartite_conflicts_naive()
         self.result_lst_bipartite = pairs
 
