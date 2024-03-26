@@ -1,8 +1,12 @@
 from sqlalchemy import text
-from sqlalchemy import create_engine
+import sqlalchemy
 
 
-def query_od_info(engine, o_taz, d_taz):
+def query_od_info(
+        engine: sqlalchemy.Engine,
+        o_taz: str | int,
+        d_taz: str | int,
+):
     sql_cmd = f"SELECT * FROM dists WHERE origin='{o_taz}' AND destination='{d_taz}'"
     with engine.connect() as connection:
         results = connection.execute(text(sql_cmd)).fetchall()
@@ -14,7 +18,11 @@ def query_od_info(engine, o_taz, d_taz):
     return str(o_taz), str(d_taz), row_dist, row_path
 
 
-def execute_sql_command(engine, sql_command, mode):
+def execute_sql_command(
+        engine: sqlalchemy.Engine,
+        sql_command: str,
+        mode: str,
+):
     with engine.connect() as connection:
         if mode == "fetchall":
             results = connection.execute(text(sql_command)).fetchall()
@@ -24,5 +32,6 @@ def execute_sql_command(engine, sql_command, mode):
             results = connection.execute(text(sql_command)).scalar()
         else:
             raise IOError(f"sql execute mode {mode} not recognized")
+    # TODO: confirm the return type of results
     return results
 
