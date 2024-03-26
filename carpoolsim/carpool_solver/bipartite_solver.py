@@ -1,6 +1,4 @@
 import numpy as np
-import pandas as pd
-import os
 import graph_tool.flow as gt
 from graph_tool.all import *
 
@@ -23,7 +21,7 @@ class CarpoolBipartite:
         self.tt_matrix = tt_matrix
         self.driver, self.passenger = self.cp_matrix.shape
 
-    def dfs_same_source(self, u, matchR, seen):
+    def dfs_same_source(self, u: int, matchR: dict, seen: bool):
         """
         A dfs based recursive function that returns true if a matching from vertex u is possible.
         (u ==> v)
@@ -65,7 +63,7 @@ class CarpoolBipartite:
         # return counts of matched pairs, matrix showing matched pairs, traceback
         return count_pairs, match_reverse
 
-    def get_chain_loop(self, u, match_reverse, match_forward, detected_lst):
+    def get_chain_loop(self, u: int, match_reverse: dict, match_forward: dict, detected_lst: list):
         """
         Given the person u, get the chain it contained in using two pointers to opposite directions.
         :param u: the integer index of person u
@@ -95,9 +93,8 @@ class CarpoolBipartite:
         last_p_forward = u
         # print(p_reverse, p_forward, is_turn1)
         while True:
-            # lr, lf = p_reverse, p_forward
             # if no driver found or out of scope, no need to continue
-            # otherwise, try find the next driver in chain.
+            # otherwise, try to find the next driver in chain.
             if is_turn1:
                 if p_reverse != -1:
                     last_p_reverse = p_reverse  # will record the last real driver in chain instead of -1
@@ -153,7 +150,6 @@ class CarpoolBipartite:
                 return []
             return [(set_name, set_name)]
         # other cases are long chain or loop
-        # print('set name', set_name)
         return_matches = []
         p = set_name
         is_odd = True
@@ -175,10 +171,9 @@ class CarpoolBipartite:
                     if p <= self.driver:
                         return_matches.append((last_p, last_p))
                 break
-        # print('bipartite matches', return_matches)
         return return_matches
 
-    def solve_bipartite_conflicts_naive(self, use_graph_tool=False):
+    def solve_bipartite_conflicts_naive(self, use_graph_tool: bool = False):
         """
         Solve role conflicts (one cannot be passenger and driver at the same time)
         1. find all matching chains/loops
@@ -241,10 +236,9 @@ class CarpoolBipartite:
         return count_pairs, match_reverse
 
 
-def solve_bipartite_maxflow(mat, connect_weight=1):
+def solve_bipartite_maxflow(mat: np.ndarray):
     """
     :param mat: the carpoolable 0-1 matrix
-    :param connect_weight: weight of each link connecting source/sink to nodes
     :return:
     """
     nrow, ncol = mat.shape
@@ -263,6 +257,7 @@ def solve_bipartite_maxflow(mat, connect_weight=1):
         g.add_edge(g.vertex(I), g.vertex(J))
         e = g.edge(g.vertex(I), g.vertex(J))
         cap[e] = mat[i, j]
+
     # add source and sink node
     source_id = nrow + ncol
     target_id = source_id + 1
@@ -270,6 +265,7 @@ def solve_bipartite_maxflow(mat, connect_weight=1):
     g.add_vertex(target_id)
     src = g.vertex(source_id)
     tgt = g.vertex(target_id)
+
     # add direct links from source and to targets
     for i in range(nrow):
         g.add_edge(src, g.vertex(i))
@@ -285,7 +281,6 @@ def solve_bipartite_maxflow(mat, connect_weight=1):
     res.a = cap.a - res.a  # the actual flow
     # get maxflow (that is, the number of pairs)
     max_flow = sum(res[e] for e in g.vertex(target_id).in_edges())
-    # print("max flow is:", max_flow)
     # print edges (carpool pairs) found by algorithm
 
     # init trace back item for each passenger
@@ -300,5 +295,6 @@ def solve_bipartite_maxflow(mat, connect_weight=1):
             in_id, out_id = int(edge_in), int(edge_out)
             out_id = out_id - nrow
             match_reverse[out_id] = in_id
+
     # should return count_pairs, match_reverse
     return max_flow, match_reverse
