@@ -1,3 +1,7 @@
+"""
+Contains function to visually check the behavior of individual trips (SOV trips, carpool trips, etc.)
+"""
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import matplotlib.patches as mpatches
@@ -6,11 +10,19 @@ plt.rcParams.update({'font.size': 22})
 
 # a helper method to plot carpool routes for visualization
 def plot_seq(
-        trip_seq, gpd_df, skeleton=None, ctd=False,
-        color='red', linewidth=3,
-        fig=None, ax=None, plt_arrow=True, arrow_color='black',
-        trip_df=None, station_df=None
-):
+        trip_seq: list[str],
+        gpd_df: pd.DataFrame,
+        skeleton: str | None = None,
+        ctd: bool = False,
+        color: str = 'red',
+        linewidth: int = 3,
+        fig: bool = None,
+        ax: plt.Axes = None,
+        plt_arrow: bool = True,
+        arrow_color: str = 'black',
+        trip_df: pd.DataFrame = None,
+        station_df: pd.DataFrame = None,
+) -> tuple[plt.Figure, plt.Axes, list]:
     """
     trip_seq: a list of link id (includes 'origin' and 'destination')
     gdf_df: Geopandas dataframe (shapefile) of abm15
