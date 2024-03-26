@@ -21,12 +21,12 @@ class CarpoolBipartite:
         self.tt_matrix = tt_matrix
         self.driver, self.passenger = self.cp_matrix.shape
 
-    def dfs_same_source(self, u: int, matchR: dict, seen: bool):
+    def dfs_same_source(self, u: int, match_reversed: list, seen: list[bool]):
         """
         A dfs based recursive function that returns true if a matching from vertex u is possible.
         (u ==> v)
         :param u: integer id of row index for drivers
-        :param matchR: a reversal dictionary records which driver u points to passenger v.
+        :param match_reversed: a reversal dictionary records which driver u points to passenger v.
         If there is no assigned driver for the passenger, then denote it as '-1'
         :param seen: a dictionary records whether a passenger v
         :return:
@@ -39,13 +39,13 @@ class CarpoolBipartite:
                 # a recursive structure
                 """
                 If passenger 'v' is not assigned to any driver before OR 
-                previously the passenger is previously assigned to driver u1 (== matchR[v]).
+                previously the passenger is previously assigned to driver u1 (== match_reversed[v]).
                 The driver u1 has an alternate passenger available. 
-                In recursion, since v is marked as visited in the above line, matchR[v] in the following 
+                In recursion, since v is marked as visited in the above line, match_reversed[v] in the following 
                 recursive call will not get job 'v' again. In this way, it is DFS search.
                 """
-                if matchR[v] == -1 or self.dfs_same_source(matchR[v], matchR, seen):
-                    matchR[v] = u
+                if match_reversed[v] == -1 or self.dfs_same_source(match_reversed[v], match_reversed, seen):
+                    match_reversed[v] = u
                     return True
         return False
 
@@ -63,7 +63,13 @@ class CarpoolBipartite:
         # return counts of matched pairs, matrix showing matched pairs, traceback
         return count_pairs, match_reverse
 
-    def get_chain_loop(self, u: int, match_reverse: dict, match_forward: dict, detected_lst: list):
+    def get_chain_loop(
+            self,
+            u: int,
+            match_reverse: list[int],
+            match_forward: list[int],
+            detected_lst: list
+    ) -> int:
         """
         Given the person u, get the chain it contained in using two pointers to opposite directions.
         :param u: the integer index of person u
@@ -72,7 +78,6 @@ class CarpoolBipartite:
         :param match_forward: map relation from
         :param detected_lst: a list record if a person is grouped into a set. If so, which set
         (set name as a person's index in the set)
-        :return:
         """
         # print(u, match_forward[u], detected_lst[u], detected_lst[-1])
         p_forward, p_reverse = u, u
@@ -238,8 +243,7 @@ class CarpoolBipartite:
 
 def solve_bipartite_maxflow(mat: np.ndarray):
     """
-    :param mat: the carpoolable 0-1 matrix
-    :return:
+    :param mat: the carpool-able 0-1 matrix
     """
     nrow, ncol = mat.shape
     g = Graph()
@@ -285,12 +289,12 @@ def solve_bipartite_maxflow(mat: np.ndarray):
 
     # init trace back item for each passenger
     match_reverse = [-1] * ncol
-    for e in g.edges():
-        edge_in, edge_out = e
+    for edge in g.edges():
+        edge_in, edge_out = edge
         # exclude edges with source and sinks
         if edge_in == source_id or edge_out == target_id:
             continue
-        if res[e] > 0:
+        if res[edge] > 0:
             # print(edge_in, edge_out)
             in_id, out_id = int(edge_in), int(edge_out)
             out_id = out_id - nrow
