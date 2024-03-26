@@ -1,5 +1,4 @@
 import os
-import time
 import math
 import warnings
 
@@ -7,17 +6,15 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point
 import networkx as nx
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 
 warnings.filterwarnings('ignore')
 
 
 def initialize_abm15_links(
-        drop_connector=True,
-        spd_column=None,
-        input_folder=None,
-        output_folder=None
+        drop_connector: bool = True,
+        spd_column: str | None = None,
+        input_folder: str | None = None,
+        output_folder: str | None = None,
 ):
     """
     Import shape-file to GeoDataFrame, convert the format based on our needs.
@@ -87,38 +84,9 @@ def initialize_abm15_links(
     return df_links
 
 
-def build_bike_network(df_links, bk_speed=15):
-    """
-    Given original network like the DataFrame of abm15, create directed graph
-        (bike network) for shortest paths searching using the package networkx.
-    :param bk_speed: default bikewaysim is 15 mph
-    :param df_links: The whole network, like the whole abm15 geo-dataframe
-    :return: DGo: directed link graph.
-    """
-    # TODO: maybe prepare bike speed in previous step instead of this simplification
-    df_links['bk_speed'] = bk_speed  # default is 15 mph
-    # The measure to use as cost of traverse a link
-    col = 'time'  # can be expand to other measures, like considering grades, etc.
-
-    def compute_link_cost(x, method):
-        x[method] = x['DISTANCE'] / x['bk_speed'] if x['bk_speed'] > 0 else 30  # mile / mph = hour
-        # could implement other methods based on needs (e.g., consider grades, etc.)
-        return x[method]
-
-    df_links[col] = df_links.apply(compute_link_cost, axis=1, method=col)
-
-    DGo = nx.DiGraph()  # directed graph
-    for ind, row2 in df_links.iterrows():
-        # forward graph, time stored as minutes
-        DGo.add_weighted_edges_from([(str(row2['A']), str(row2['B']), float(row2[col]) * 60.0)],
-                                    weight='forward', dist=row2['DISTANCE'], name=row2['NAME'])
-        # add its backward links
-        DGo.add_weighted_edges_from([(str(row2['B']), str(row2['A']), float(row2[col]) * 60.0)],
-                                    weight='backward', dist=row2['DISTANCE'], name=row2['NAME'])
-    return DGo
-
-
-def build_carpool_network(df_links):
+def build_carpool_network(
+        df_links: pd.DataFrame,
+) -> nx.DiGraph:
     """
     Given original network like the DataFrame of abm15, create directed graph
      for shortest paths searching using the package networkx.
@@ -161,7 +129,13 @@ def build_carpool_network(df_links):
 
 
 # add (x,y) given (lon, lat)
-def add_xy(df, lat, lon, x, y, x_sq, y_sq, grid_size=25000.0):
+def add_xy(
+        df: pd.DataFrame,
+        lat: str, lon: str,
+        x: str, y: str,
+        x_sq: str, y_sq: str,
+        grid_size: float = 25000.0
+) -> pd.DataFrame:
     """
     Given (lat, lon) information, generate coordinates in local projection system
         Also, classify location into different categories using a grid and store the
@@ -178,8 +152,16 @@ def add_xy(df, lat, lon, x, y, x_sq, y_sq, grid_size=25000.0):
     return df
 
 
-def point_to_node(df_points, df_links, ifGrid=False, walk_speed=2.0, grid_size=25000.0, dist_thresh=5280.0,
-                  is_origin=True, freeway_links=False):
+def point_to_node(
+        df_points: pd.DataFrame,
+        df_links: pd.DataFrame,
+        use_grid: bool = False,
+        walk_speed: float = 2.0,
+        grid_size: float = 25000.0,
+        dist_thresh: float = 5280.0,
+        is_origin: bool = True,
+        freeway_links: bool = False,
+) -> pd.DataFrame:
     """
     Given a column of location projected to local coordinates (x, y), find nearest node in the network,
      record the node ID and the distance to walk to the node.
@@ -188,7 +170,7 @@ def point_to_node(df_points, df_links, ifGrid=False, walk_speed=2.0, grid_size=2
                    Each row corresponds to one point.
         df_links: GeoDataFrame network files like abm15.shp,
                   each row denotes a directed link with two end nodes A and B.
-        ifGrid: If False, compute the grid it false into. If True, grid info is stored in de_points.
+        use_grid: If False, compute the grid it false into. If True, grid info is stored in de_points.
         walk_speed: walking speed default is 2.0 mph.
         grid_size: (I guess it should be) the width of the grid. Default is 25000 ft or 4.7 mile.
         dist_thresh: the maximum distance a normal person willing walk. Default is 1 mile.
@@ -216,7 +198,7 @@ def point_to_node(df_points, df_links, ifGrid=False, walk_speed=2.0, grid_size=2
         return math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
 
     # INITIALIZATION
-    if ifGrid:
+    if use_grid:
         df_points = define_gridid(df_points)
     df_points['NodeID'] = 0
     df_points['Node_t'] = 0
@@ -300,7 +282,11 @@ def samp_pre_process(filename, dict_settings, input_as_df=False):
     return df_points
 
 
-def pnr_pre_process(filename, dict_settings, input_as_df=False):
+def pnr_pre_process(
+        filename: str,
+        dict_settings: dict,
+        input_as_df: bool = False,
+) -> pd.DataFrame:
     df_links = dict_settings['network']['bike']['links']
     freeway_links = dict_settings['network']['bike']['links']
     walk_speed = dict_settings['walk_speed']
@@ -323,246 +309,4 @@ def pnr_pre_process(filename, dict_settings, input_as_df=False):
                  'x_sq': 'x_sq', 'y_sq': 'y_sq', 'dist': 'd'}
     )
     return df_points
-
-
-def format_routes(row, option, dict_settings, resultsPathi, verbose=True):
-    """
-    The only thing this function do it to format information
-        correctly to a table.
-    :param row: general information of a trip
-    :param option: mode considered. now only has 'bike'
-    :param dict_settings: settings, including the graph
-    :param resultsPathi: one or several trip routes found given the trip info
-    :return: a DataFrame with the correct record shape
-    """
-    # load network
-    dict_bike = dict_settings['network'][option]
-    DGo, links = dict_bike['DG'], dict_bike['links']
-    # strategy 1 for forward, 2 for backward
-    graph_type = ['forward', 'backward']
-    strategy = dict_settings['strategy'][option]
-    graph_direction = graph_type[strategy - 1]
-    # create DataFrame to hold data
-    column_names = ['A', 'B', 'dist', 'mode',
-                    'strategy', 'route_num', 'sequence',
-                    'time', 'timeStamp', 'trip_id']
-    # for each route, iterate paths in traveling order
-    # A	B	dist	mode	option	route	sequence	time	timeStamp	trip_id	route_id
-    returned_df = pd.DataFrame(columns=column_names)
-    for routei, path in enumerate(resultsPathi):
-        # initialize dataframe at the start of every loop
-        formated_df = pd.DataFrame(columns=column_names)
-        if verbose:
-            print('trip #:', row.trip_id)
-            # print(path)
-        f_row = {}
-        dists = 0
-        accu_time = 0
-
-        # attach first walking part before loop
-        f_row['A'], f_row['B'], f_row['mode'] = 'origin', path[0], 'walk'
-        f_row['strategy'], f_row['sequence'] = strategy, 1
-        f_row['time'], f_row['dist'] = row['o_t'], row['o_d']
-        f_row = pd.DataFrame(f_row, index=[0])
-        f_row['route_num'] = routei
-        formated_df = formated_df.append(f_row, ignore_index=True)
-
-        f_row = {}
-        for i in range(len(path) - 1):
-            u, v = path[i], path[i + 1]
-            f_row['A'], f_row['B'] = u, v
-            dists += DGo[u][v]['forward']
-            f_row['dist'] = DGo[u][v]['dist']
-            f_row['mode'] = option
-            f_row['route'] = DGo[u][v]['name']
-            f_row['strategy'] = strategy
-            f_row['sequence'] = i + 2
-
-            f_row['time'] = DGo[u][v]['forward']  # the time it takes to travel on the link
-            accu_time += f_row['time']
-
-            f_row = pd.DataFrame(f_row, index=[0])
-            f_row['route_num'] = routei
-            formated_df = formated_df.append(f_row, ignore_index=True)
-
-        # attach final walking part after loop
-        f_row = {}
-        f_row['A'], f_row['B'], f_row['mode'] = path[-1], 'destination', 'walk'
-        f_row['strategy'], f_row['sequence'] = strategy, len(path) + 1
-        f_row['time'], f_row['dist'] = row['d_t'], row['d_d']
-        f_row['route_num'] = routei
-        f_row = pd.DataFrame(f_row, index=[0])
-
-        formated_df = formated_df.append(f_row, ignore_index=True)
-
-        # finally cumsum for each trip
-        if graph_direction == "forward":
-            formated_df['timeStamp'] = formated_df['time'].cumsum()
-        else:
-            formated_df['timeStamp'] = formated_df['time'].iloc[::-1].cumsum() * -1
-            formated_df['timeStamp'] = formated_df['timeStamp'] + formated_df['time']
-        formated_df['timeStamp'] = formated_df['timeStamp'] / 60  # change to time stamp is in hours from minutes
-        formated_df['timeStamp'] = formated_df['timeStamp'] + dict_settings['query_time']
-
-        # update returned dataframe
-        returned_df = pd.concat([returned_df, formated_df])
-
-    returned_df['route_num'] = returned_df['route_num'] + 1
-    return returned_df
-
-
-def bike_route_finder(row, option, dict_settings):
-    """
-    Parameters.
-
-        row: a DataFrame row of travel information
-            expected columns are: ox, oy, o_t, o_node, ox_sq, oy_sq, o_d
-                                  dx, dy, d_t, d_node, dx_sq, dy_sq, d_d
-        option: 'bike' for bike and walk only
-        dict_settings: import all settings
-    Returns.
-        resultsPathi: path
-        runningLogi: log information
-    """
-    t1 = time.time()
-
-    # based on strategy, select forward or backward graph
-    # strategy 1 for forward, 2 for backward
-    # for BikewaySim, there is only forward case
-    graph_type = ['forward', 'backward']
-    strategy = dict_settings['strategy'][option]
-    graph_direction = graph_type[strategy - 1]
-    # load the number of k-shortest paths required
-    num_routes = dict_settings['num_options'][option]
-
-    # load network
-    dict_bike = dict_settings['network'][option]
-    DGo, links = dict_bike['DG'], dict_bike['links']
-
-    def k_shortest_paths(G, source, target, k, weight=None):
-        if weight == "backward":
-            reverse = True
-            weight = "forward"  # no need to reset all name attributes of the network, just go with "forward"
-        else:
-            reverse = False
-        if reverse:  # reverse the graph, search from target to source
-            G = nx.DiGraph.reverse(G)
-            path_generator = nx.shortest_simple_paths(G, target, source, weight)
-        else:
-            path_generator = nx.shortest_simple_paths(G, source, target, weight)
-        paths = []
-        i = 0
-        while i < k:
-            try:
-                paths.append(next(path_generator))
-                i += 1
-            except:
-                break
-        # paths = list(islice(nx.shortest_simple_paths(G, source, target, weight), k))
-        dists_lst = []
-        for path in paths:
-            dists = 0
-            for i in range(len(path) - 1):
-                u, v = path[i], path[i + 1]
-                dists += G[u][v][weight]
-            dists_lst.append(dists)
-
-        if reverse:  # reverse back to the travel sequence order
-            paths = [p[::-1] for p in paths]
-            dists_lst = [d[::-1] for d in paths]
-        return dists_lst, paths
-
-    dists, paths = k_shortest_paths(
-        DGo, str(row['o_node']), str(row['d_node']),
-        k=num_routes, weight=graph_direction
-    )
-
-    # if need to plot, plot it!
-    plot_all = dict_settings['plot_all']
-    if plot_all:
-        for i, path in enumerate(paths):
-            '''
-            (trip_seq, gpd_df, skeleton=None, ctd=False, color='red', linewidth=3,
-                     fig=None, ax=None, plt_arrow=True, arrow_color='black', trip_df=None)
-                
-            trip_seq: a list of link id (includes 'origin' and 'destination')
-            gdf_df: Geopandas dataframe (shapefile) of abm15
-            skeleton: a list of link ID.
-                If it is None, DO NOT plot skeleton;
-                If set as 'highway', those will be plotted as skeleton traffic network (e.g., I-85).
-                Otherwise, input is a list of link segments.
-            trip_df: If not None, corresponding input used for running RoadwaySim.
-                This is just for plotting origin destination coordinates.
-    
-            '''
-            fig, ax = plot_seq_complex(path, gpd_df=dict_settings['network']['bike']['links'], skeleton='highway',
-                                       ctd=False, color='red', linewidth=3, plt_arrow=False,
-                                       trip_series=row)
-            file_name = "{}_{}.PNG".format(row['trip_id'], i)
-            pn = os.path.join(dict_settings['plot_folder'], file_name)
-            fig.savefig(pn)
-
-    resultsPathi = format_routes(row, option, dict_settings, paths)
-    err_message = 'Nothing wrong happens'
-    numRoutes = len(dists)
-    runningLogi = pd.DataFrame(
-        {'trip_id': [row['trip_id']], 'option': ['drive'], 'state': [err_message], 'numRoutes': [numRoutes],
-         'runTime': [time.time() - t1]})
-    return resultsPathi, runningLogi
-
-
-# a helper method to plot carpool routes for visualization
-def plot_seq_complex(trip_seq, gpd_df, skeleton=None, ctd=False, color='red', linewidth=3,
-                     fig=None, ax=None, plt_arrow=True, arrow_color='black', trip_series=None):
-    """
-    trip_seq: a list of link id (includes 'origin' and 'destination')
-    gdf_df: Geopandas dataframe (shapefile) of abm15
-    skeleton: a list of link ID.
-        If it is None, DO NOT plot skeleton;
-        If set as 'highway', those will be plotted as skeleton traffic network (e.g., I-85).
-        Otherwise, input is a list of link segments.
-    trip_series: If not None, corresponding input used for running RoadwaySim.
-        This is just for plotting origin destination coordinates.
-    """
-    # import matplotlib.pyplot as plt
-    if ctd is False:
-        fig, ax = plt.subplots(figsize=(10, 10))
-        ax.set_aspect('equal')
-    if trip_series is not None:
-        t1 = trip_series
-        orig_loc = ax.plot(t1['ox'], t1['oy'], 'r^', label='origin')  # origin
-        dest_loc = ax.plot(t1['dx'], t1['dy'], 'g^', label='destination')  # destination
-
-    # convert sequential node ID to link ID
-    As, Bs = trip_seq[0:-1:1], trip_seq[1:len(trip_seq):1]
-    trip_seq = [a + '_' + b for a, b in zip(As, Bs)]  # link IDs
-    trip_df = gpd_df.loc[gpd_df['A_B'].isin(trip_seq), ]
-
-    if skeleton == 'highway':
-        trip_df_skeleton = gpd_df.loc[gpd_df['NAME'].str.contains('I-', na=False), ]
-    elif skeleton is not None:  # input should be a list of names
-        trip_df_skeleton = gpd_df.loc[gpd_df['NAME'].isin(skeleton), ]
-
-    if skeleton == 'highway' or skeleton is not None:
-        trip_df_skeleton.plot(ax=ax, color='gray', alpha=0.2)
-    # use merge method to keep the sequence of trajectory correct
-    trip_seq = pd.DataFrame(trip_seq, columns=['seq'])
-    trip_df = trip_df.merge(trip_seq, left_on='A_B', right_on='seq', how='left')
-    # print(trip_df.columns)
-
-    trip_df.plot(ax=ax, color=color, alpha=0.3, linewidth=linewidth)  # (column='SPEEDLIMIT')
-    if plt_arrow:
-        for index, row in trip_df.iterrows():
-            arr = ax.arrow(row.Ax, row.Ay, row.Bx - row.Ax, row.By - row.Ay,
-                           shape='left', width=150, color=arrow_color,
-                           length_includes_head=True, label='Vehicular Trip Trajectory', alpha=0.5)
-        ax.legend([arr, ], ['My label', ])
-    # create legend manually
-    trip_legend_col = mpatches.Patch(color=color, label='vanpool trip')
-    if skeleton is not None:
-        skeleton_gray = mpatches.Patch(color='gray', label='skeleton network')
-        ax.legend(handles=[skeleton_gray, trip_legend_col, orig_loc[0], dest_loc[0]])
-    else:
-        ax.legend(handles=[trip_legend_col, orig_loc[0], dest_loc[0]])
-    return fig, ax
 
