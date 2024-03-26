@@ -1,11 +1,10 @@
 import pandas as pd
 from sqlalchemy import create_engine
+import sqlalchemy
 import pickle
 
 
-# helper method for multiprocessing
-# move this code in somewhere else for multiprocessing
-def batch_store_from_name(pk_name, url):
+def batch_store_from_name(pk_name: str, url: str) -> None:
     db1 = {'dist': {}, 'path': {}}
     with open(pk_name, 'rb') as dbfile:
         db_temp = pickle.load(dbfile)
@@ -14,7 +13,7 @@ def batch_store_from_name(pk_name, url):
     batch_store_df(db1, url)
 
 
-def sql_engine_factory(db_url):
+def sql_engine_factory(db_url: str) -> sqlalchemy.Engine:
     db_type = db_url.split(":")[0]
     if db_type == "sqlite":
         engine = create_engine(
@@ -31,7 +30,7 @@ def sql_engine_factory(db_url):
     return engine
 
 
-def batch_store_df(db1, url):
+def batch_store_df(db1: dict, url: str) -> None:
     engine = sql_engine_factory(url)
     dists_df = pd.DataFrame(
         convert_dict_to_row(db1['dist']),
@@ -60,7 +59,7 @@ def batch_store_df(db1, url):
     del dists_df
 
 
-def convert_dict_to_row(dt, last_column_type=None):
+def convert_dict_to_row(dt, last_column_type: None | str = None):
     dt_lst = list()
     if last_column_type is None:
         for dt_key in dt:
