@@ -1,3 +1,7 @@
+# Don't store large data sets in git repository
+/data_inputs
+/data_outputs
+
 # PyCharm
 .idea
 
