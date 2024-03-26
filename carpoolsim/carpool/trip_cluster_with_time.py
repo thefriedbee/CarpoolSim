@@ -3,16 +3,26 @@ import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+import networkx as nx
+import sqlalchemy
+
 from carpoolsim.carpool.trip_cluster import TripCluster
+
 plt.rcParams.update({'font.size': 22})
 np.set_printoptions(precision=3)
 
 
 class TripClusterWithTime(TripCluster):
     def __init__(
-            self, df_all, network, links, engine,
-            delta_t, epsilon_t,
-            parking_lots=None
+            self,
+            df_all: pd.DataFrame,
+            network: nx.DiGraph,
+            links: pd.DataFrame,
+            engine: sqlalchemy.Engine,
+            delta_t: float,
+            epsilon_t: float,
+            parking_lots: pd.DataFrame | None = None,
     ):
         """
         For PNR case and other cases, need to update all the matrices every iteration
@@ -62,7 +72,7 @@ class TripClusterWithTime(TripCluster):
             # init the parking lots matrix (done)
             pass
 
-    def truncate_matrices(self, update_diag_info=True):
+    def truncate_matrices(self, update_diag_info: bool = True):
         """ Truncate matrix and update diagonal information (e.g., using self.soloTimes)
         :param update_diag_info:
         :return:
@@ -87,12 +97,12 @@ class TripClusterWithTime(TripCluster):
             # self.ml_pnr_matrix_p = self.ml_pnr_matrix_p[:nrow, :nrow]
 
     def run_a_step_epsilon(
-            self, rt_bipartite=True,
-            verbose=True, print_mat=False,
-            mu1=15, mu2=0.1, dst_max=5*5280,
-            Delta1=15, Delta2=10, Gamma=0.2,
-            delta=15, gamma=1.5, ita=0.5, ita_pnr=0.5,
-            plot_all=False, mode=0
+            self, rt_bipartite: bool = True,
+            verbose: bool = True, print_mat: bool = False,
+            mu1: float = 15, mu2: float = 0.1, dst_max: float = 5*5280,
+            Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,
+            delta: float = 15, gamma: float = 1.5, ita: float = 0.5, ita_pnr: float = 0.5,
+            plot_all: bool = False, mode: int = 0
     ):
         """
         Run assignment for one epsilon time.
@@ -173,7 +183,7 @@ class TripClusterWithTime(TripCluster):
             if self.t0 > 1440:  # stop if over a day...
                 break
 
-    def update_trips(self, dropped_indexes, verbose=False):
+    def update_trips(self, dropped_indexes: list[int], verbose: bool = False):
         """
         Add new trips coming into the trip
         :param dropped_indexes: indexes to trips to be dropped from last simulation step/iteration of optimization
@@ -245,7 +255,7 @@ class TripClusterWithTime(TripCluster):
         summ_stats_ind = pd.concat(self.stats_ind_df)
         return summ_stats, summ_stats_ind
 
-    def compute_depart_01_matrix_pre(self, Delta1=15, default_rule=False):
+    def compute_depart_01_matrix_pre(self, Delta1: float = 15, default_rule: bool = False):
         """
         Overload method for this case
         Filter out carpool trips based on time constraint conditions.
@@ -271,7 +281,7 @@ class TripClusterWithTime(TripCluster):
             self.cp_matrix = (self.cp_matrix &
                               (np.absolute(mat) <= Delta1)).astype(np.bool_)
 
-    def compute_depart_01_matrix_pre_pnr(self, Delta1=15, default_rule=False):
+    def compute_depart_01_matrix_pre_pnr(self, Delta1: float = 15, default_rule: bool = False):
         nrow, ncol = self.nrow, self.ncol
         # simple method
         driver_lst = np.array(self.trips_front['newmin'].tolist()).reshape((1, -1))
@@ -290,7 +300,7 @@ class TripClusterWithTime(TripCluster):
             self.cp_pnr_matrix = (self.cp_pnr_matrix &
                                   (np.absolute(mat) <= Delta1))[:nrow, :ncol].astype(np.bool_)
 
-    def compute_depart_01_matrix_post(self, Delta2=10, Gamma=0.2, default_rule=True):
+    def compute_depart_01_matrix_post(self, Delta2: float = 10, Gamma: float = 0.2, default_rule: bool = True):
         """
         After tt_matrix_p1 is computed, filter by maximum waiting time for the driver at pickup location
         :param Delta2: driver's maximum waiting time
@@ -332,7 +342,7 @@ class TripClusterWithTime(TripCluster):
                               ).astype(np.bool_)
 
     def compute_depart_01_matrix_post_pnr(
-            self, Delta2=10, Gamma=0.2, default_rule=True
+            self, Delta2: float = 10, Gamma: float = 0.2, default_rule: bool = True
     ):
         """
         Nothing changed for post analysis except fix candidates to drivers
@@ -385,7 +395,7 @@ class TripClusterWithTime(TripCluster):
                                   (np.absolute(mat/passenger_time) <= Gamma)).astype(np.bool_)
 
     def compute_pickup_01_matrix(
-            self, threshold_dist=5280 * 5, mu1=1.5, mu2=0.1, use_mu2=True
+            self, threshold_dist: float = 5280 * 5, mu1: float = 1.5, mu2: float = 0.1, use_mu2: bool = True
     ):
         """
         Compute feasibility matrix based on whether one can pick up/ drop off passengers.
@@ -469,7 +479,7 @@ class TripClusterWithTime(TripCluster):
                               (backward_index <= mu2)).astype(np.bool_)
 
     def compute_reroute_01_matrix(
-            self, delta=15, gamma=1.5, ita=0.9
+            self, delta: float = 15, gamma: float = 1.5, ita: float = 0.9
     ):
         """
         Compute carpool-able matrix considering total reroute time (non-shared trip segments)
@@ -525,8 +535,8 @@ class TripClusterWithTime(TripCluster):
             self.compute_carpool_pnr(index[0], index[1], fixed_role=True, trips=self.trips)
 
     def compute_reroute_01_matrix_pnr(
-            self, delta=15, gamma=1.5, ita_pnr=0.5,
-            print_mat=True
+            self, delta: float = 15, gamma: float = 1.5, ita_pnr: float = 0.5,
+            print_mat: bool = True
     ):
         """ Calculate specific traveling plan for each party of the PNR trip.
         :param delta: reroute minutes at most for each PNR traveler
@@ -591,8 +601,8 @@ class TripClusterWithTime(TripCluster):
         # passenger's travel time = "driver's travel time" - "driver's access "
 
     def combine_pnr_carpool(
-            self, include_direct=True, print_mat=True
-    ):
+            self, include_direct: bool = True, print_mat: bool = True
+    ) -> None:
         nrow, ncol = self.nrow, self.ncol
         if include_direct:
             # 0 for simple travel, 1 for PNR travel
