@@ -5,14 +5,15 @@ import itertools
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import networkx as nx
 from gurobipy import Model, GRB, quicksum
+import sqlalchemy
 
+import matplotlib.pyplot as plt
 from matplotlib.legend_handler import HandlerPatch
 import matplotlib.patches as mpatches
-import contextily as cx
 from matplotlib_scalebar.scalebar import ScaleBar
+import contextily as cx
 
 import carpoolsim.carpool_solver.bipartite_solver as tg
 from carpoolsim.visualization.carpool_viz_seq import plot_seq
@@ -24,7 +25,15 @@ np.set_printoptions(precision=3)
 
 # TripHolder is depreciated. Use this class for all kinds of carpool computation tasks
 class TripCluster:
-    def __init__(self, df, network, links, engine, parking_lots=None, update_now_str=True):
+    def __init__(
+            self,
+            df: pd.DataFrame,
+            network: nx.DiGraph,
+            links: pd.DataFrame,
+            engine: sqlalchemy.Engine,
+            parking_lots: pd.DataFrame | None = None,
+            update_now_str: bool = True
+    ) -> None:
         """
         This TripCluster class tries to substitute the old TripHolder class.
         It is more efficient in shortest path computation by checking cached data.

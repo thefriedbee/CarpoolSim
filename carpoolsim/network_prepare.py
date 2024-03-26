@@ -15,7 +15,7 @@ def initialize_abm15_links(
         spd_column: str | None = None,
         input_folder: str | None = None,
         output_folder: str | None = None,
-):
+) -> pd.DataFrame:
     """
     Import shape-file to GeoDataFrame, convert the format based on our needs.
     (Combining all useful information from 2 .shp file to one file)

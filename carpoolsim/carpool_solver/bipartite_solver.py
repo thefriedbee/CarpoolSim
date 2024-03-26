@@ -7,7 +7,11 @@ from graph_tool.all import *
 
 # find maximal Bipartite matching for general graph (given feasibility matrix of any shape)
 class CarpoolBipartite:
-    def __init__(self, cp_matrix, tt_matrix):
+    def __init__(
+            self,
+            cp_matrix: np.ndarray,
+            tt_matrix: np.ndarray,
+    ):
         """
         Init graph & shape. Notice that driver and passenger with same integer index are the same person.
         :param cp_matrix: carpool-able matrix (0-1)
