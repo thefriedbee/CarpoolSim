@@ -18,10 +18,10 @@ def convert_all_df_column_names_to_lower(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def initialize_abm15_links(
+        df_nodes_raw: gpd.GeoDataFrame,
+        df_links_raw: gpd.GeoDataFrame,
         drop_connector: bool = True,
-        spd_column: str | None = None,
-        input_folder: str | None = None,
-        output_folder: str | None = None,
+        speed_column: str | None = None,
 ) -> pd.DataFrame:
     """
     Import shape-file to GeoDataFrame, convert the format based on our needs.
@@ -31,16 +31,6 @@ def initialize_abm15_links(
     there is no need to call this function again.
     :return: GeoDataFrame of network link information, along with its end node information.
     """
-    # prepare input/output paths
-    if input_folder is None:
-        input_folder = os.path.join(os.environ['project_root'], 'data_inputs', 'ABM2020 203K')
-    if output_folder is None:
-        output_folder = os.path.join(os.environ['project_root'], 'data_outputs', 'ABM2020 203K')
-
-    file_name_nodes = os.path.join('2020 nodes with latlon', '2020_nodes_latlon.shp')
-    file_name_links = os.path.join('2020 links', '2020_links.shp')
-    df_nodes_raw = gpd.read_file(os.path.join(input_folder, file_name_nodes))
-    df_links_raw = gpd.read_file(os.path.join(input_folder, file_name_links))
     # keep all column names to lower cases
     df_nodes_raw = convert_all_df_column_names_to_lower(df_nodes_raw)
     df_links_raw = convert_all_df_column_names_to_lower(df_links_raw)
@@ -52,8 +42,8 @@ def initialize_abm15_links(
     else:
         df_links_raw = df_links_raw[df_links_raw['factype'] < 50]
     # if there is speed column
-    if spd_column is not None:
-        df_links_raw['speedlimit'] = df_links_raw[spd_column]
+    if speed_column is not None:
+        df_links_raw['speedlimit'] = df_links_raw[speed_column]
 
     if 'speedlimit' in df_links_raw.columns.tolist():
         spd = 'speedlimit'
@@ -88,16 +78,14 @@ def initialize_abm15_links(
 
     df_links = abm15_assign_grid(df_links)
     df_links = gpd.GeoDataFrame(df_links, geometry=df_links['geometry'], crs=df_links.crs)
-    if output_folder is None:
-        output_folder = os.path.join(
-            os.environ['project_root'],
-            'data_outputs',
-            'step2',
-            'abm_links_processed.shp'
-        )
-    df_links.to_file(
-        output_folder
+
+    output_folder = os.path.join(
+        os.environ["data_outputs"],
+        'step2',
+        'abm_links_processed.shp'
     )
+
+    df_links.to_file(output_folder)
     return df_links
 
 

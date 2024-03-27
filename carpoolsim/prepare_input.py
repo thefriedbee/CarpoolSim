@@ -9,10 +9,7 @@ A traffic network class is defined consists of three parts:
 
 import geopandas as gpd
 
-from carpoolsim.network_prepare import (
-    initialize_abm15_links,
-    build_carpool_network,
-)
+import carpoolsim.network_prepare as net_prep
 
 
 class TrafficNetwork:
@@ -22,11 +19,27 @@ class TrafficNetwork:
             network_nodes: gpd.GeoDataFrame,
             tazs: gpd.GeoDataFrame,
     ) -> None:
-        self.network_links = network_links
-        self.network_nodes = network_nodes
+        self.gdf_nodes = network_nodes
+        self.gdf_links = network_links
         self.tazs = tazs
+        self.network_dict = {}
 
-    pass
+    def convert_abm_links(self):
+        gdf_links = net_prep.initialize_abm15_links(
+            self.gdf_nodes,
+            self.gdf_links,
+            drop_connector=False
+        )
+        self.gdf_links = gdf_links
+
+    def build_network(self):
+        df_links = self.gdf_links
+
+        self.network_dict["links"] = df_links
+        self.network_dict["DG"] = net_prep.build_carpool_network(df_links)
+
+    def run_batch(self):
+        pass
 
 
 
