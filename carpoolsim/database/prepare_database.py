@@ -39,6 +39,10 @@ def sql_engine_factory(db_url: str) -> sqlalchemy.Engine:
         print("postgresql engine created")
     else:
         raise IOError(f"engine type {db_type} not recognized...")
+
+    # test whether database can be connected
+    with engine.connect() as connection:
+        print("engine successfully connectedd to the database")
     return engine
 
 

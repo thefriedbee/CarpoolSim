@@ -15,6 +15,10 @@ import networkx as nx
 import multiprocess
 
 import carpoolsim.network_prepare as net_prep
+from carpoolsim.database.prepare_database import (
+    sql_engine_factory,
+    batch_store_from_lst
+)
 
 
 class TrafficNetwork:
@@ -142,12 +146,6 @@ def get_shortest_paths(
     return db
 
 
-def combine_all_results(
-        all_results: list[dict]
-):
-    pass
-
-
 if __name__ == "__main__":
     # import basic settings
     from carpoolsim.basic_settings import *
@@ -177,10 +175,15 @@ if __name__ == "__main__":
     ]
 
     t0 = time.perf_counter()
-    results = None
     with multiprocess.Pool(NUM_PROCESSES) as pool:
         results = pool.starmap(get_shortest_paths, task_inputs)
 
     d1 = time.perf_counter() - t0
     print(f'It takes {d1 / 60:.1f} minutes to prepare objects')
+
+    # store results in database
+    engine = sql_engine_factory(DB_URL)
+    batch_store_from_lst(results, DB_URL)
+
+    print("all data has loaded into the database")
 
