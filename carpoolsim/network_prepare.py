@@ -7,7 +7,14 @@ import geopandas as gpd
 from shapely.geometry import Point
 import networkx as nx
 
+import basic_settings as bs
+
 warnings.filterwarnings('ignore')
+
+
+def convert_all_df_column_names_to_lower(df: pd.DataFrame) -> pd.DataFrame:
+    df.columns = [cn.lower() for cn in df.columns]
+    return df
 
 
 def initialize_abm15_links(
@@ -34,42 +41,52 @@ def initialize_abm15_links(
     file_name_links = os.path.join('2020 links', '2020_links.shp')
     df_nodes_raw = gpd.read_file(os.path.join(input_folder, file_name_nodes))
     df_links_raw = gpd.read_file(os.path.join(input_folder, file_name_links))
+    # keep all column names to lower cases
+    df_nodes_raw = convert_all_df_column_names_to_lower(df_nodes_raw)
+    df_links_raw = convert_all_df_column_names_to_lower(df_links_raw)
 
-    df_nodes = df_nodes_raw[['N', 'X', 'Y', 'lat', 'lon']]
+    df_nodes = df_nodes_raw[['n', 'x', 'y', 'lat', 'lon']]
     # notice FACTTYPE zeros stands for all connectors; FACTTYPE over 50 stands for transit links or its access!
     if drop_connector:
-        df_links_raw = df_links_raw[df_links_raw['FACTYPE'] > 0][df_links_raw['FACTYPE'] < 50]
+        df_links_raw = df_links_raw[df_links_raw['factype'] > 0][df_links_raw['factype'] < 50]
     else:
-        df_links_raw = df_links_raw[df_links_raw['FACTYPE'] < 50]
+        df_links_raw = df_links_raw[df_links_raw['factype'] < 50]
     # if there is speed column
     if spd_column is not None:
-        df_links_raw['SPEEDLIMIT'] = df_links_raw[spd_column]
-    if 'SPEEDLIMIT' in df_links_raw.columns.tolist():
-        spd = 'SPEEDLIMIT'
-    else:
-        spd = 'SPEED_LIMI'
+        df_links_raw['speedlimit'] = df_links_raw[spd_column]
 
-    if 'A_B' not in df_links_raw.columns.tolist():
-        df_links_raw['A_B'] = df_links_raw.apply(lambda x: str(int(x['A'])) + '_' + str(int(x['B'])), axis=1)
+    if 'speedlimit' in df_links_raw.columns.tolist():
+        spd = 'speedlimit'
+    else:
+        spd = 'speedlimi'
+
+    if 'a_b' not in df_links_raw.columns.tolist():
+        df_links_raw['a_b'] = df_links_raw.apply(lambda x: str(int(x['a'])) + '_' + str(int(x['b'])), axis=1)
 
     # IMPORTANT: this step set the default traveling speed given road type!!!
     mapper = {0: 35, 1: 70, 2: 70, 3: 65, 4: 65, 7: 35, 10: 35, 11: 70, 14: 35}  # edited dl 09072020
     # mapper = {0: 35, 3: 65, 4: 65, 7: 35, 10: 35, 11: 55, 14: 35} # edited hl 04092019
-    df_links_raw['tmp'] = df_links_raw['FACTYPE'].map(mapper)
+    df_links_raw['tmp'] = df_links_raw['factype'].map(mapper)
     df_links_raw['tmp'] = df_links_raw['tmp'].fillna(35)
     df_links_raw.loc[df_links_raw[spd] == 0, spd] = df_links_raw.loc[df_links_raw[spd] == 0, 'tmp']
-    df_links = df_links_raw[['A', 'B', 'A_B', 'geometry', spd, 'DISTANCE', 'NAME', 'FACTYPE']]
-    df_links = df_links.merge(df_nodes.rename(columns={'N': 'A', 'X': 'Ax', 'Y': 'Ay', 'lat': 'A_lat', 'lon': 'A_lon'}),
-                              how='left', on='A')
-    df_links = df_links.merge(df_nodes.rename(columns={'N': 'B', 'X': 'Bx', 'Y': 'By', 'lat': 'B_lat', 'lon': 'B_lon'}),
-                              how='left', on='B')
+    df_links = df_links_raw[['a', 'b', 'a_b', 'geometry', spd, 'distance', 'name', 'factype']]
 
-    def abm15_assignGrid(df_links, grid_size=25000.0):
+    # add node information to links
+    df_links = df_links.merge(
+        df_nodes.rename(columns={'n': 'a', 'x': 'ax', 'y': 'ay', 'lat': 'a_lat', 'lon': 'a_lon'}),
+        how='left', on='a'
+    )
+    df_links = df_links.merge(
+        df_nodes.rename(columns={'N': 'b', 'x': 'bx', 'y': 'by', 'lat': 'b_lat', 'lon': 'b_lon'}),
+        how='left', on='b'
+    )
+
+    def abm15_assign_grid(df_links, grid_size=25000.0):
         for col in ['minx', 'miny', 'maxx', 'maxy']:
             df_links[col + '_sq'] = round(df_links['geometry'].bounds[col] / grid_size, 0)
         return df_links
 
-    df_links = abm15_assignGrid(df_links)
+    df_links = abm15_assign_grid(df_links)
     df_links = gpd.GeoDataFrame(df_links, geometry=df_links['geometry'], crs=df_links.crs)
     if output_folder is None:
         output_folder = os.path.join(
@@ -95,6 +112,7 @@ def build_carpool_network(
     :param df_links: The whole network, like the whole abm15 geo-dataframe
     :return: DGo: directed link graph.
     """
+    # convert all column names to lower cases from this function...
     df_links.columns = [cn.lower() for cn in df_links.columns]
 
     # The measure to use as cost of traverse a link
@@ -102,7 +120,7 @@ def build_carpool_network(
 
     def compute_link_cost(x, method):
         # in case there are still links with 0 speed value
-        x[method] = x['DISTANCE'] / x['SPEED_LIMI'] if x['SPEED_LIMI'] > 0 else 30  # mile / mph = hour
+        x[method] = x['distance'] / x['speed_limi'] if x['speed_limi'] > 0 else 30  # mile / mph = hour
         # could implement other methods based on needs (e.g., consider grades, etc.)
         return x[method]
 
@@ -112,24 +130,28 @@ def build_carpool_network(
     for ind, row2 in df_links.iterrows():
         # forward graph, time stored as minutes
         # dist stored link length in miles, forward/backward stores the key value of the travel time.
-        DGo.add_weighted_edges_from([(str(row2['A']), str(row2['B']), float(row2[col]) * 60.0)],
-                                    weight='forward', dist=row2['DISTANCE'], name=row2['NAME'])
+        DGo.add_weighted_edges_from(
+            [(str(row2['a']), str(row2['b']), float(row2[col]) * 60.0)],
+            weight='forward', dist=row2['distance'], name=row2['name']
+        )
         # add its backward links
-        DGo.add_weighted_edges_from([(str(row2['B']), str(row2['A']), float(row2[col]) * 60.0)],
-                                    weight='backward', dist=row2['DISTANCE'], name=row2['NAME'])
+        DGo.add_weighted_edges_from(
+            [(str(row2['b']), str(row2['a']), float(row2[col]) * 60.0)],
+            weight='backward', dist=row2['distance'], name=row2['name']
+        )
 
     for ind, row2 in df_links.iterrows():
         # iterate all edges, if a link has no 'forward' weights, set it to large number like 10000 to block it
         # Do the same thing for 'backward' weights
-        if 'forward' not in DGo[str(row2['B'])][str(row2['A'])].keys():
-            DGo[str(row2['B'])][str(row2['A'])]['forward'] = 1e6
-        if 'backward' not in DGo[str(row2['A'])][str(row2['B'])].keys():
-            DGo[str(row2['A'])][str(row2['B'])]['backward'] = 1e6
+        if 'forward' not in DGo[str(row2['b'])][str(row2['a'])].keys():
+            DGo[str(row2['b'])][str(row2['a'])]['forward'] = 1e6
+        if 'backward' not in DGo[str(row2['a'])][str(row2['B'])].keys():
+            DGo[str(row2['a'])][str(row2['b'])]['backward'] = 1e6
     # construct backward network
     return DGo
 
 
-# add (x,y) given (lon, lat)
+# add projected coordinate (x,y) given (lon, lat)
 def add_xy(
         df: pd.DataFrame,
         lat: str, lon: str,
@@ -145,7 +167,7 @@ def add_xy(
     crs = {'init': 'epsg:4326', 'no_defs': True}  # NAD83: EPSG 4326
     geometry = [Point(xy) for xy in zip(df[lon], df[lat])]
     df = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
-    df = df.to_crs(epsg=2240)  # Georgia West (ftUS):  EPSG:2240
+    df = df.to_crs(bs.CRS)
     df[x] = df['geometry'].apply(lambda x: x.coords[0][0])
     df[y] = df['geometry'].apply(lambda x: x.coords[0][1])
     df[x_sq] = round(df[x] / grid_size, 0)
@@ -189,7 +211,7 @@ def point_to_node(
         df_pts['y_sq'] = df_pts['geometry'].apply(lambda x: find_grid(x.coords[0][1]))
         return df_pts
 
-    def find_closestLink(point, lines):
+    def find_closest_link(point, lines):
         dists = lines.distance(point)
         # print(dists)
         # print('dists shapes', dists.shape)
@@ -201,8 +223,8 @@ def point_to_node(
     # INITIALIZATION
     if use_grid:
         df_points = define_gridid(df_points)
-    df_points['NodeID'] = 0
-    df_points['Node_t'] = 0
+    df_points['node_id'] = 0
+    df_points['node_t'] = 0
     # CALCULATION
     print('{} points to prepare'.format(len(df_points)))
     i = 0
@@ -219,7 +241,7 @@ def point_to_node(
             # print('# of links in the grid', len(df_links_i))
             # print(df_links_i.index)
             # find the closest link and the distance
-            LinkID_Dist = find_closestLink(row.geometry, gpd.GeoSeries(df_links_i.geometry))
+            LinkID_Dist = find_closest_link(row.geometry, gpd.GeoSeries(df_links_i.geometry))
             linki = df_links_i.loc[LinkID_Dist[0], :]
             # find the closest node on the link
             df_coords = df_points.loc[ind, 'geometry'].coords[0]
@@ -227,23 +249,23 @@ def point_to_node(
             dist1 = calculate_dist(df_coords[0], df_coords[1], linki['Ax'], linki['Ay'])
             dist2 = calculate_dist(df_coords[0], df_coords[1], linki['Bx'], linki['By'])
             if (dist1 > dist_thresh) and (dist2 > dist_thresh):
-                df_points.loc[ind, 'NodeID'] = -1
-                df_points.loc[ind, 'Node_t'] = -1
+                df_points.loc[ind, 'node_id'] = -1
+                df_points.loc[ind, 'node_t'] = -1
             else:
-                df_points.loc[ind, 'NodeID'] = linki['A'] if dist1 < dist2 else linki['B']
-                df_points.loc[ind, 'Node_t'] = dist1 / walk_speed / 5280.0 if \
+                df_points.loc[ind, 'node_id'] = linki['A'] if dist1 < dist2 else linki['B']
+                df_points.loc[ind, 'node_t'] = dist1 / walk_speed / 5280.0 if \
                     dist1 < dist2 else dist2 / walk_speed / 5280.0
             # add distance o_d, d_d to dataframe
             df_points.loc[ind, 'dist'] = min(dist1, dist2) / 5280.0
         except Exception as e:
-            print('Error happens!', e)
+            print('Error happens: ', e)
             print('Trip number is', ind)
             if is_origin:
-                print(row['x_sq'], row['y_sq'], row['ori_lat'], row['ori_lon'])
+                print(row['x_sq'], row['y_sq'], row['orig_lat'], row['orig_lon'])
             else:
                 print(row['x_sq'], row['y_sq'], row['dest_lat'], row['dest_lon'])
-            df_points.loc[ind, 'NodeID'] = -1
-            df_points.loc[ind, 'Node_t'] = 0
+            df_points.loc[ind, 'node_id'] = -1
+            df_points.loc[ind, 'node_t'] = 0
     if i % 100 == 0 and i > 90:
         print("Finished prepare {} points to nearest network nodes!".format(i))
     return df_points
@@ -270,10 +292,16 @@ def pnr_pre_process(
     df_points = point_to_node(
         df_points, df_links, False, walk_speed,
         grid_size, ntp_dist_thresh,
-        freeway_links=freeway_links) \
-        .rename(
-        columns={'NodeID': 'node', 'Node_t': 't', 'x': 'x', 'y': 'y',
-                 'x_sq': 'x_sq', 'y_sq': 'y_sq', 'dist': 'd'}
+        freeway_links=freeway_links
+    ).rename(
+        columns={
+            'node_id': 'node',
+            'node_t': 't',
+            'x': 'x', 'y': 'y',
+            'x_sq': 'x_sq',
+            'y_sq': 'y_sq',
+            'dist': 'd'
+        }
     )
     return df_points
 

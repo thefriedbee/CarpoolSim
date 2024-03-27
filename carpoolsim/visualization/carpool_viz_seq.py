@@ -5,6 +5,9 @@ Contains function to visually check the behavior of individual trips (SOV trips,
 import matplotlib.pyplot as plt
 import pandas as pd
 import matplotlib.patches as mpatches
+
+import carpoolsim.basic_settings as bs
+
 plt.rcParams.update({'font.size': 22})
 
 
@@ -35,7 +38,7 @@ def plot_seq(
     """
     # convert trip_df to geopataframe, reproject the trip dataframe
     from pyproj import Proj, transform
-    in_crs = Proj(init='EPSG:2240')
+    in_crs = Proj(init=bs.CRS)
     out_crs = Proj(init='EPSG:3857')
     out_crs_code = 3857
     # store all legend handles
