@@ -6,7 +6,7 @@ from shapely import Polygon
 
 
 @dataclass
-class TAZ:
+class InputTAZ:
     taz_id: int
     geometry: Polygon
     centroid_lon: float

@@ -3,8 +3,9 @@ Define the "schema" of parking lots
 """
 from dataclasses import dataclass
 
+
 @dataclass
-class ParkingLot:
+class InputParkingLot:
     """Standard class to represent a parking lot"""
     object_id: int
     name: str

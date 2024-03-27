@@ -232,7 +232,7 @@ def point_to_node(
             # find links in the grid
             df_links_i = df_links[df_links['minx_sq'] <= row['x_sq']][df_links['maxx_sq'] >= row['x_sq']][
                 df_links['maxy_sq'] >= row['y_sq']][df_links['miny_sq'] <= row['y_sq']]
-            # if cannot find df links, it is an external point, try to pick a highway access link
+            # if one cannot find df links, it is an external point, try to pick a highway access link
             if len(df_links_i) == 0:
                 df_links_i = freeway_links
             # find the closest link and the distance

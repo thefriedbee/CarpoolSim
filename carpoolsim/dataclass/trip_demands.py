@@ -1,6 +1,7 @@
 """
 Define the trip demands
 """
+import datetime
 from dataclasses import dataclass
 
 import pandas as pd
@@ -13,18 +14,20 @@ class TripDemand:
     orig_lat: float
     orig_taz: int  # TAZ id
     orig_taz_group: int   # TAZ group id (for multiprocessing)
+
     dest_lon: float
     dest_lat: float
     dest_taz: int  # TAZ id
     dest_taz_group: int  # TAZ group id (for multiprocessing)
     # temporal information
-    new_min: float  # minute of the day for departure
+    # I don't care the date, but time of the day is important
+    depart_time: datetime.datetime
 
     def convert_to_list(self):
         return [
             self.orig_lon, self.orig_lat, self.orig_taz, self.orig_taz_group,
             self.dest_lon, self.dest_lat, self.dest_taz, self.dest_taz_group,
-            self.new_min
+            self.depart_time
         ]
 
     def convert_to_pandas_series(self):
@@ -32,7 +35,7 @@ class TripDemand:
         idx = [
             "orig_lon", "orig_lat", "orig_taz", "orig_taz_group",
             "dest_lon", "dest_lat", "dest_taz", "dest_taz_group",
-            "new_min"
+            "depart_time"
         ]
         ser = pd.Series(data=lst, index=idx)
         return ser
