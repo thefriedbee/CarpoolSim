@@ -49,4 +49,5 @@ os.environ['trip_demands'] = os.path.join(
 # geographical information (the projection crs)
 # CRS = "EPSG:3857"  # This is Mercator system that can work for most places globally
 CRS = "EPSG:2240"  # this is for Georgia West
+NUM_PROCESSES = 12  # number of multiprocess for parallel computing
 

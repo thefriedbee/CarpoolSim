@@ -54,14 +54,14 @@ class TrafficNetwork:
         # print(network_dict['DG']['65666']['1'])
         self.network_dict = network_dict
 
-    def prepare_taz_lists(self, chuck_size=100):
+    def prepare_taz_lists(self, chunk_size=100):
         # break taz list to chunks for multiprocessing
         taz_lst = []
-        L = len(self.tazs_ids)
-        num_chucks = int(len(self.tazs_ids) / chuck_size) + 1
+        num_tazs = len(self.tazs_ids)
+        num_chucks = int(len(self.tazs_ids) / chunk_size) + 1
         for idx in range(num_chucks):
-            start_index = idx * chuck_size
-            end_index = min((idx + 1) * chuck_size, L) + 1
+            start_index = idx * chunk_size
+            end_index = min((idx + 1) * chunk_size, num_tazs) + 1
             _lst = self.tazs_ids[start_index: end_index]
             taz_lst.append(_lst)
         return taz_lst
@@ -121,17 +121,12 @@ def get_shortest_paths(source_taz_lst, network_dict, destination_lst):
     print(f'Finished searching {len(source_taz_lst)} tazs')
     # store values in disk instead of holding all the memories
     db = {'dist': path_retention_dists, 'path': path_retention_paths}
-
-    first_taz = source_taz_lst[0]
-    last_taz_id = source_taz_lst[-1]
-    folder = "build_graph/path_retention"
-    file_name = f'paths_retention_{first_taz:04d}_{last_taz_id:04d}.pickle'
-    fname = os.path.join(folder, file_name)
-    with open(fname, 'wb') as dbfile:
-        pickle.dump(db, dbfile)
+    return db
 
 
-def main():
+def combine_all_results(
+        all_results: list[dict]
+):
     pass
 
 
@@ -154,6 +149,14 @@ if __name__ == "__main__":
     traffic_network.get_taz_id_list()
     traffic_network.convert_abm_links()
     traffic_network.build_network()
+    taz_lst = traffic_network.prepare_taz_lists(chunk_size=100)
 
-    pass
+    t0 = time.perf_counter()
+    all_results = []
+    with multiprocess.Pool(NUM_PROCESSES) as pool:
+        results = pool.map(get_shortest_paths, taz_lst)
+        all_results.append(results)
+
+    d1 = time.perf_counter() - t0
+    print(f'It takes {d1 / 60:.1f} minutes to prepare objects')
 
