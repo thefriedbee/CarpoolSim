@@ -54,10 +54,17 @@ class TrafficNetwork:
         # print(network_dict['DG']['65666']['1'])
         self.network_dict = network_dict
 
-    def prepare_taz_lists(self):
+    def prepare_taz_lists(self, chuck_size=100):
         # break taz list to chunks for multiprocessing
-
-        pass
+        taz_lst = []
+        L = len(self.tazs_ids)
+        num_chucks = int(len(self.tazs_ids) / chuck_size) + 1
+        for idx in range(num_chucks):
+            start_index = idx * chuck_size
+            end_index = min((idx + 1) * chuck_size, L) + 1
+            _lst = self.tazs_ids[start_index: end_index]
+            taz_lst.append(_lst)
+        return taz_lst
 
     def run_batch(self, source_id=1):
         network_dict = self.network_dict
