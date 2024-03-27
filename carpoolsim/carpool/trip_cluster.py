@@ -1365,7 +1365,7 @@ class TripCluster:
         fig1, ax1, h2 = plot_seq(
             trip_seq=p2, gpd_df=network_df,
             ctd=True, color='green', linewidth=20,
-            fig=fig1, ax=ax1, plt_arrow=False
+            ax=ax1, plt_arrow=False
         )
         plt.title(
             f"Driver: {intind1}({tod_1}+{tt1:.2f}min); Passenger: {intind2}({tod_2}min)"
@@ -1406,7 +1406,7 @@ class TripCluster:
         fig2, ax2, h4 = plot_seq(
             trip_seq=p1, gpd_df=network_df,
             ctd=True, color='green', linewidth=20,
-            fig=fig2, ax=ax2, plt_arrow=False
+            ax=ax2, plt_arrow=False
         )
         plt.legend(handles=h3+h4+[mpatches.Patch(color='green', label='shared trip', alpha=0.3)],
                    handler_map={mpatches.FancyArrow: HandlerPatch(patch_func=make_legend_arrow)},
