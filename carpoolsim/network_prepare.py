@@ -206,15 +206,13 @@ def point_to_node(
     def find_grid(pt_x):
         return round(pt_x / grid_size), 0
 
-    def define_gridid(df_pts):
+    def define_grid_id(df_pts):
         df_pts['x_sq'] = df_pts['geometry'].apply(lambda x: find_grid(x.coords[0][0]))
         df_pts['y_sq'] = df_pts['geometry'].apply(lambda x: find_grid(x.coords[0][1]))
         return df_pts
 
     def find_closest_link(point, lines):
         dists = lines.distance(point)
-        # print(dists)
-        # print('dists shapes', dists.shape)
         return [dists.idxmin(), dists.min()]
 
     def calculate_dist(x1, y1, x2, y2):
@@ -222,7 +220,7 @@ def point_to_node(
 
     # INITIALIZATION
     if use_grid:
-        df_points = define_gridid(df_points)
+        df_points = define_grid_id(df_points)
     df_points['node_id'] = 0
     df_points['node_t'] = 0
     # CALCULATION
@@ -234,18 +232,14 @@ def point_to_node(
             # find links in the grid
             df_links_i = df_links[df_links['minx_sq'] <= row['x_sq']][df_links['maxx_sq'] >= row['x_sq']][
                 df_links['maxy_sq'] >= row['y_sq']][df_links['miny_sq'] <= row['y_sq']]
-            # print(df_links_i.shape)
             # if cannot find df links, it is an external point, try to pick a highway access link
             if len(df_links_i) == 0:
                 df_links_i = freeway_links
-            # print('# of links in the grid', len(df_links_i))
-            # print(df_links_i.index)
             # find the closest link and the distance
             LinkID_Dist = find_closest_link(row.geometry, gpd.GeoSeries(df_links_i.geometry))
             linki = df_links_i.loc[LinkID_Dist[0], :]
             # find the closest node on the link
             df_coords = df_points.loc[ind, 'geometry'].coords[0]
-            # print('coords', df_coords)
             dist1 = calculate_dist(df_coords[0], df_coords[1], linki['Ax'], linki['Ay'])
             dist2 = calculate_dist(df_coords[0], df_coords[1], linki['Bx'], linki['By'])
             if (dist1 > dist_thresh) and (dist2 > dist_thresh):
