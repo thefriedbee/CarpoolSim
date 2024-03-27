@@ -95,7 +95,8 @@ def build_carpool_network(
     :param df_links: The whole network, like the whole abm15 geo-dataframe
     :return: DGo: directed link graph.
     """
-    # TODO: maybe prepare bike speed in previous step instead of this simplification
+    df_links.columns = [cn.lower() for cn in df_links.columns]
+
     # The measure to use as cost of traverse a link
     col = 'time'  # can expand to other measures, like considering grades, etc.
 
@@ -245,40 +246,6 @@ def point_to_node(
             df_points.loc[ind, 'Node_t'] = 0
     if i % 100 == 0 and i > 90:
         print("Finished prepare {} points to nearest network nodes!".format(i))
-    return df_points
-
-
-def samp_pre_process(filename, dict_settings, input_as_df=False):
-    df_links = dict_settings['network']['bike']['links']
-    freeway_links = dict_settings['network']['bike']['links']
-    walk_speed, grid_size, ntp_dist_thresh = dict_settings['walk_speed'], dict_settings['grid_size'], dict_settings[
-        'ntp_dist_thresh']
-
-    if input_as_df:
-        df_points = filename
-    else:
-        df_points = pd.read_csv(filename)
-    df_points = add_xy(df_points, 'ori_lat', 'ori_lon', 'x', 'y', 'x_sq', 'y_sq', grid_size=grid_size)
-
-    df_points = point_to_node(df_points, df_links, False, walk_speed, grid_size, ntp_dist_thresh,
-                              freeway_links=freeway_links) \
-        .rename(columns={'NodeID': 'o_node', 'Node_t': 'o_t', 'x': 'ox', 'y': 'oy',
-                         'x_sq': 'ox_sq', 'y_sq': 'oy_sq', 'dist': 'o_d'})
-
-    df_points = add_xy(df_points, 'dest_lat', 'dest_lon', 'x', 'y', 'x_sq', 'y_sq', grid_size=grid_size)
-    df_points = point_to_node(df_points, df_links, False, walk_speed, grid_size, ntp_dist_thresh,
-                              freeway_links=freeway_links) \
-        .rename(columns={'NodeID': 'd_node', 'Node_t': 'd_t', 'x': 'dx', 'y': 'dy',
-                         'x_sq': 'dx_sq', 'y_sq': 'dy_sq', 'dist': 'd_d'})
-
-    # origin, destination should be of different OD nodes and must found ODs to continue
-    df_points = df_points[
-        df_points['o_node'] != -1][
-        df_points['d_node'] != -1][
-        df_points['o_node'] != df_points['d_node']
-    ]
-    if input_as_df is False:  # record information
-        df_points.to_csv(filename.replace('.csv', '_node.csv').replace('samples_in', 'samples_out'), index=False)
     return df_points
 
 

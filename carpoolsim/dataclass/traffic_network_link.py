@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from shapely import LineString
 
+
 @dataclass
 class TrafficNetworkLink:
     node_a: int  # link's starting node id
