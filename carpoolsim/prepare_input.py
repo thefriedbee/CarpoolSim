@@ -6,10 +6,13 @@ A traffic network class is defined consists of three parts:
 - network nodes: nodes (end points) of the network
 - network tazs: traffic analysis zones
 """
+import os
+import pickle
 import time
 
 import geopandas as gpd
 import networkx as nx
+import multiprocess
 
 import carpoolsim.network_prepare as net_prep
 
@@ -89,3 +92,47 @@ def run_batch_ods(nx_network, source, destination_lst=None, weight='forward'):
         len_dict = len_dict_output
         paths_dict = paths_dict_output
     return len_dict, paths_dict
+
+
+def get_shortest_paths(source_taz_lst, network_dict, destination_lst):
+    path_retention_dists, path_retention_paths = {}, {}
+    taz_lst = []
+    for taz in source_taz_lst:
+        dists_dict, paths_dict = run_batch_ods(
+            network_dict['DG'], str(taz), destination_lst, weight='forward')
+        path_retention_dists[str(taz)] = dists_dict
+        path_retention_paths[str(taz)] = paths_dict
+        taz_lst.append(str(taz))
+
+    print(f'Finished searching {len(source_taz_lst)} tazs')
+    # store values in disk instead of holding all the memories
+    db = {'dist': path_retention_dists, 'path': path_retention_paths}
+
+    first_taz = source_taz_lst[0]
+    last_taz_id = source_taz_lst[-1]
+    folder = "build_graph/path_retention"
+    file_name = f'paths_retention_{first_taz:04d}_{last_taz_id:04d}.pickle'
+    fname = os.path.join(folder, file_name)
+    with open(fname, 'wb') as dbfile:
+        pickle.dump(db, dbfile)
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    # import basic settings
+    from carpoolsim.basic_settings import *
+
+    # load traffic network data
+    taz_centriod_nodes = gpd.read_file(os.environ["taz"])
+    df_nodes_raw = gpd.read_file(os.environ['network_nodes'])
+    df_links_raw = gpd.read_file(os.environ['network_links'])
+    # load pnr nodes to park and ride trip
+    pnr_nodes = gpd.read_file(os.environ["parking_lots"])
+
+    # init object
+
+    pass
+
