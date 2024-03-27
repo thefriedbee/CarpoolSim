@@ -43,19 +43,18 @@ def initialize_abm15_links(
         df_links_raw = df_links_raw[df_links_raw['factype'] < 50]
     # if there is speed column
     if speed_column is not None:
-        df_links_raw['speedlimit'] = df_links_raw[speed_column]
+        df_links_raw['speed_limit'] = df_links_raw[speed_column]
 
-    if 'speedlimit' in df_links_raw.columns.tolist():
-        spd = 'speedlimit'
+    if 'speed_limit' in df_links_raw.columns.tolist():
+        spd = 'speed_limit'
     else:
-        spd = 'speedlimi'
+        spd = 'speed_limi'
 
     if 'a_b' not in df_links_raw.columns.tolist():
         df_links_raw['a_b'] = df_links_raw.apply(lambda x: str(int(x['a'])) + '_' + str(int(x['b'])), axis=1)
 
     # IMPORTANT: this step set the default traveling speed given road type!!!
     mapper = {0: 35, 1: 70, 2: 70, 3: 65, 4: 65, 7: 35, 10: 35, 11: 70, 14: 35}  # edited dl 09072020
-    # mapper = {0: 35, 3: 65, 4: 65, 7: 35, 10: 35, 11: 55, 14: 35} # edited hl 04092019
     df_links_raw['tmp'] = df_links_raw['factype'].map(mapper)
     df_links_raw['tmp'] = df_links_raw['tmp'].fillna(35)
     df_links_raw.loc[df_links_raw[spd] == 0, spd] = df_links_raw.loc[df_links_raw[spd] == 0, 'tmp']
@@ -67,7 +66,7 @@ def initialize_abm15_links(
         how='left', on='a'
     )
     df_links = df_links.merge(
-        df_nodes.rename(columns={'N': 'b', 'x': 'bx', 'y': 'by', 'lat': 'b_lat', 'lon': 'b_lon'}),
+        df_nodes.rename(columns={'n': 'b', 'x': 'bx', 'y': 'by', 'lat': 'b_lat', 'lon': 'b_lon'}),
         how='left', on='b'
     )
 
@@ -78,14 +77,6 @@ def initialize_abm15_links(
 
     df_links = abm15_assign_grid(df_links)
     df_links = gpd.GeoDataFrame(df_links, geometry=df_links['geometry'], crs=df_links.crs)
-
-    output_folder = os.path.join(
-        os.environ["data_outputs"],
-        'step2',
-        'abm_links_processed.shp'
-    )
-
-    df_links.to_file(output_folder)
     return df_links
 
 
@@ -133,7 +124,7 @@ def build_carpool_network(
         # Do the same thing for 'backward' weights
         if 'forward' not in DGo[str(row2['b'])][str(row2['a'])].keys():
             DGo[str(row2['b'])][str(row2['a'])]['forward'] = 1e6
-        if 'backward' not in DGo[str(row2['a'])][str(row2['B'])].keys():
+        if 'backward' not in DGo[str(row2['a'])][str(row2['b'])].keys():
             DGo[str(row2['a'])][str(row2['b'])]['backward'] = 1e6
     # construct backward network
     return DGo

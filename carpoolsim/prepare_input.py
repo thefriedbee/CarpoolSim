@@ -61,7 +61,7 @@ class TrafficNetwork:
         num_chucks = int(len(self.tazs_ids) / chunk_size) + 1
         for idx in range(num_chucks):
             start_index = idx * chunk_size
-            end_index = min((idx + 1) * chunk_size, num_tazs) + 1
+            end_index = min((idx + 1) * chunk_size, num_tazs)
             _lst = self.tazs_ids[start_index: end_index]
             taz_lst.append(_lst)
         return taz_lst
@@ -83,7 +83,12 @@ class TrafficNetwork:
 # No dict_settings or option is required, just simply compute od travel time
 # given od nodes and a network with static speed.
 # make it as simple as possible for efficiency
-def run_batch_ods(nx_network, source, destination_lst=None, weight='forward'):
+def run_batch_ods(
+        nx_network: nx.DiGraph,
+        source: int | str,
+        destination_lst: list[int | str] | None = None,
+        weight='forward'
+):
     """
     Use single source Dijkstra to compute the travel time from one origin to all listed destinations.
     This function also aims at testing compute efficiency.
@@ -97,7 +102,12 @@ def run_batch_ods(nx_network, source, destination_lst=None, weight='forward'):
     :param weight: the weight of the graph, either forward graph or backward graph
     :return: return a dataframe with all the information
     """
-    len_dict, paths_dict = nx.single_source_dijkstra(nx_network, source, weight=weight)
+    # convert formats
+    source = str(source)
+    destination_lst = [str(item) for item in destination_lst]
+
+    len_dict, paths_dict = nx.single_source_dijkstra(
+        nx_network, source, weight=weight)
     if destination_lst is not None:
         len_dict_output, paths_dict_output = {}, {}
         for k in destination_lst:
@@ -108,12 +118,20 @@ def run_batch_ods(nx_network, source, destination_lst=None, weight='forward'):
     return len_dict, paths_dict
 
 
-def get_shortest_paths(source_taz_lst, network_dict, destination_lst):
+def get_shortest_paths(
+        network_dict,
+        destination_lst,
+        source_taz_lst
+):
     path_retention_dists, path_retention_paths = {}, {}
     taz_lst = []
     for taz in source_taz_lst:
         dists_dict, paths_dict = run_batch_ods(
-            network_dict['DG'], str(taz), destination_lst, weight='forward')
+            network_dict['DG'],
+            str(taz),
+            destination_lst,
+            weight='forward'
+        )
         path_retention_dists[str(taz)] = dists_dict
         path_retention_paths[str(taz)] = paths_dict
         taz_lst.append(str(taz))
@@ -149,13 +167,19 @@ if __name__ == "__main__":
     traffic_network.get_taz_id_list()
     traffic_network.convert_abm_links()
     traffic_network.build_network()
+
+    network_dict = traffic_network.network_dict
+    destination_lst = traffic_network.tazs_ids
     taz_lst = traffic_network.prepare_taz_lists(chunk_size=100)
+    task_inputs = [
+        (network_dict, destination_lst, taz)
+        for taz in taz_lst
+    ]
 
     t0 = time.perf_counter()
-    all_results = []
+    results = None
     with multiprocess.Pool(NUM_PROCESSES) as pool:
-        results = pool.map(get_shortest_paths, taz_lst)
-        all_results.append(results)
+        results = pool.starmap(get_shortest_paths, task_inputs)
 
     d1 = time.perf_counter() - t0
     print(f'It takes {d1 / 60:.1f} minutes to prepare objects')

@@ -21,12 +21,12 @@ os.environ['data_outputs'] = os.path.join(
 
 
 # more specific paths to required files
-os.environ['network_links'] = os.path.join(
+os.environ['network_nodes'] = os.path.join(
     os.environ['data_inputs'],
     'ABM2020 203K', '2020 nodes with latlon', '2020_nodes_latlon.shp'
 )
 
-os.environ['network_nodes'] = os.path.join(
+os.environ['network_links'] = os.path.join(
     os.environ['data_inputs'],
     'ABM2020 203K', '2020 links', '2020_links.shp'
 )
