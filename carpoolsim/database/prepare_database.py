@@ -4,13 +4,23 @@ import sqlalchemy
 import pickle
 
 
+def batch_store_from_lst(record_lst: dict, url: str) -> None:
+    engine = sql_engine_factory(url)
+    db1 = {'dist': {}, 'path': {}}
+    for record in record_lst:
+        db1['dist'] = {**record['dist']}
+        db1['path'] = {**record['path']}
+        batch_store_df(db1, engine)
+
+
 def batch_store_from_name(pk_name: str, url: str) -> None:
+    engine = sql_engine_factory(url)
     db1 = {'dist': {}, 'path': {}}
     with open(pk_name, 'rb') as dbfile:
         db_temp = pickle.load(dbfile)
         db1['dist'] = {**db_temp['dist']}
         db1['path'] = {**db_temp['path']}
-    batch_store_df(db1, url)
+    batch_store_df(db1, engine)
 
 
 def sql_engine_factory(db_url: str) -> sqlalchemy.Engine:
@@ -20,18 +30,22 @@ def sql_engine_factory(db_url: str) -> sqlalchemy.Engine:
             db_url,
             connect_args={'timeout': 30}
         )
+        print("sqlite engine created")
     elif db_type == "postgresql":
         engine = create_engine(
             db_url,
             connect_args={'connect_timeout': 30}
         )
+        print("postgresql engine created")
     else:
         raise IOError(f"engine type {db_type} not recognized...")
     return engine
 
 
-def batch_store_df(db1: dict, url: str) -> None:
-    engine = sql_engine_factory(url)
+def batch_store_df(
+        db1: dict,
+        engine: sqlalchemy.Engine
+) -> None:
     dists_df = pd.DataFrame(
         convert_dict_to_row(db1['dist']),
         columns=['origin', 'destination', 'dists']
