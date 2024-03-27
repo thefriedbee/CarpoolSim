@@ -7,7 +7,7 @@ import geopandas as gpd
 from shapely.geometry import Point
 import networkx as nx
 
-import basic_settings as bs
+import carpoolsim.basic_settings as bs
 
 warnings.filterwarnings('ignore')
 
@@ -33,9 +33,9 @@ def initialize_abm15_links(
     """
     # prepare input/output paths
     if input_folder is None:
-        input_folder = os.path.join(os.environ['PROJ_LIB'], 'data_inputs', 'ABM2020 203K')
+        input_folder = os.path.join(os.environ['project_root'], 'data_inputs', 'ABM2020 203K')
     if output_folder is None:
-        output_folder = os.path.join(os.environ['PROJ_LIB'], 'data_outputs', 'ABM2020 203K')
+        output_folder = os.path.join(os.environ['project_root'], 'data_outputs', 'ABM2020 203K')
 
     file_name_nodes = os.path.join('2020 nodes with latlon', '2020_nodes_latlon.shp')
     file_name_links = os.path.join('2020 links', '2020_links.shp')
@@ -90,7 +90,7 @@ def initialize_abm15_links(
     df_links = gpd.GeoDataFrame(df_links, geometry=df_links['geometry'], crs=df_links.crs)
     if output_folder is None:
         output_folder = os.path.join(
-            os.environ['PROJ_LIB'],
+            os.environ['project_root'],
             'data_outputs',
             'step2',
             'abm_links_processed.shp'
@@ -236,8 +236,8 @@ def point_to_node(
             if len(df_links_i) == 0:
                 df_links_i = freeway_links
             # find the closest link and the distance
-            LinkID_Dist = find_closest_link(row.geometry, gpd.GeoSeries(df_links_i.geometry))
-            linki = df_links_i.loc[LinkID_Dist[0], :]
+            link_id_dist = find_closest_link(row.geometry, gpd.GeoSeries(df_links_i.geometry))
+            linki = df_links_i.loc[link_id_dist[0], :]
             # find the closest node on the link
             df_coords = df_points.loc[ind, 'geometry'].coords[0]
             dist1 = calculate_dist(df_coords[0], df_coords[1], linki['Ax'], linki['Ay'])
