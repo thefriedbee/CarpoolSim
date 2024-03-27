@@ -16,17 +16,17 @@ os.environ['project_data'] = os.path.join(
 )
 
 os.environ['network_links'] = os.path.join(
-    os.environ['project_root'],
+    os.environ['project_data'],
     'ABM2020 203K', '2020 nodes with latlon', '2020_nodes_latlon.shp'
 )
 
 os.environ['network_nodes'] = os.path.join(
-    os.environ['project_root'],
+    os.environ['project_data'],
     'ABM2020 203K', '2020 links', '2020_links.shp'
 )
 
 os.environ['taz'] = os.path.join(
-    os.environ['project_root'],
+    os.environ['project_data'],
     'ABM2020 203K', 'taz', 'TAZ_combine.shp'
 )
 
@@ -40,6 +40,7 @@ os.environ['trip_demands'] = os.path.join(
     '2022_campus_commute_survey_data_no_zip_na_05122023.csv'
 )
 
+# geographical information (the projection crs)
 # CRS = "EPSG:3857"  # This is Mercator system that can work for most places globally
 CRS = "EPSG:2240"  # this is for Georgia West
 
