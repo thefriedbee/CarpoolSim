@@ -3,7 +3,7 @@ Define the standard schema of network links file
 """
 from dataclasses import dataclass
 
-from shapely import LineString, Polygon
+from shapely import Point, LineString, Polygon
 
 
 @dataclass
@@ -12,6 +12,8 @@ class TrafficNetworkLink:
     b: int  # link's ending node id
     a_b: str  # links id (defined by node_a and node_b)
     distance: float  # travel distance along the link
+    factype: str  # type of the road (e.g., highway, etc.)
+    speed_limit: float  # speed limit of the road (i.e., travel speed)
     geometry: LineString  # geometry of the link (for visualization purpose)
 
     def convert_to_dict(self):
@@ -20,6 +22,8 @@ class TrafficNetworkLink:
             "b": self.b,
             "a_b": self.a_b,
             "distance": self.distance,
+            "factype": self.factype,
+            "speed_limit": self.speed_limit,
             "geometry": self.geometry
         }
 
@@ -32,6 +36,7 @@ class TrafficNetworkNode:
     # projected coordinates (need to choose the correct projection)
     x: float
     y: float
+    geometry: Point
 
     def convert_to_dict(self):
         return {

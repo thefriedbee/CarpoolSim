@@ -35,7 +35,7 @@ def initialize_abm15_links(
     df_nodes_raw = convert_all_df_column_names_to_lower(df_nodes_raw)
     df_links_raw = convert_all_df_column_names_to_lower(df_links_raw)
 
-    df_nodes = df_nodes_raw[['n', 'x', 'y', 'lat', 'lon']]
+    df_nodes = df_nodes_raw[['nid', 'x', 'y', 'lat', 'lon']]
     # notice FACTTYPE zeros stands for all connectors; FACTTYPE over 50 stands for transit links or its access!
     if drop_connector:
         df_links_raw = df_links_raw[df_links_raw['factype'] > 0][df_links_raw['factype'] < 50]
@@ -58,15 +58,15 @@ def initialize_abm15_links(
     df_links_raw['tmp'] = df_links_raw['factype'].map(mapper)
     df_links_raw['tmp'] = df_links_raw['tmp'].fillna(35)
     df_links_raw.loc[df_links_raw[spd] == 0, spd] = df_links_raw.loc[df_links_raw[spd] == 0, 'tmp']
-    df_links = df_links_raw[['a', 'b', 'a_b', 'geometry', spd, 'distance', 'name', 'factype']]
+    df_links = df_links_raw[['a', 'b', 'a_b', 'geometry', spd, 'distance', 'factype']]
 
     # add node information to links
     df_links = df_links.merge(
-        df_nodes.rename(columns={'n': 'a', 'x': 'ax', 'y': 'ay', 'lat': 'a_lat', 'lon': 'a_lon'}),
+        df_nodes.rename(columns={'nid': 'a', 'x': 'ax', 'y': 'ay', 'lat': 'a_lat', 'lon': 'a_lon'}),
         how='left', on='a'
     )
     df_links = df_links.merge(
-        df_nodes.rename(columns={'n': 'b', 'x': 'bx', 'y': 'by', 'lat': 'b_lat', 'lon': 'b_lon'}),
+        df_nodes.rename(columns={'nid': 'b', 'x': 'bx', 'y': 'by', 'lat': 'b_lat', 'lon': 'b_lon'}),
         how='left', on='b'
     )
 
@@ -111,12 +111,12 @@ def build_carpool_network(
         # dist stored link length in miles, forward/backward stores the key value of the travel time.
         DGo.add_weighted_edges_from(
             [(str(row2['a']), str(row2['b']), float(row2[col]) * 60.0)],
-            weight='forward', dist=row2['distance'], name=row2['name']
+            weight='forward', dist=row2['distance'], name=row2['a_b']
         )
         # add its backward links
         DGo.add_weighted_edges_from(
             [(str(row2['b']), str(row2['a']), float(row2[col]) * 60.0)],
-            weight='backward', dist=row2['distance'], name=row2['name']
+            weight='backward', dist=row2['distance'], name=row2['a_b']
         )
 
     for ind, row2 in df_links.iterrows():

@@ -182,8 +182,10 @@ if __name__ == "__main__":
     print(f'It takes {d1 / 60:.1f} minutes to prepare objects')
 
     # store results in database
+    t0 = time.perf_counter()
     engine = sql_engine_factory(DB_URL)
     batch_store_from_lst(results, DB_URL)
-
-    print("all data has loaded into the database")
+    d1 = time.perf_counter() - t0
+    print(f'It takes {d1 / 60:.1f} minutes to prepare dataset')
+    print("all data has loaded into the database!")
 
