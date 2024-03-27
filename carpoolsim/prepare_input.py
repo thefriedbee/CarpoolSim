@@ -27,7 +27,12 @@ class TrafficNetwork:
         self.gdf_nodes = network_nodes
         self.gdf_links = network_links
         self.tazs = tazs
+        self.tazs_ids = []
         self.network_dict = {}
+
+    def get_taz_id_list(self):
+        self.tazs.taz_id = self.tazs.taz_id.astype(int)
+        self.tazs_ids = sorted(self.tazs.taz_id.tolist())
 
     def convert_abm_links(self):
         gdf_links = net_prep.initialize_abm15_links(
@@ -49,20 +54,22 @@ class TrafficNetwork:
         # print(network_dict['DG']['65666']['1'])
         self.network_dict = network_dict
 
-    def run_batch(self):
+    def prepare_taz_lists(self):
+        # break taz list to chunks for multiprocessing
+
+        pass
+
+    def run_batch(self, source_id=1):
         network_dict = self.network_dict
 
         # only record results to centroids
-        destination_lst = [str(i) for i in range(1, 5874)]
-        t1 = time.perf_counter()
         dists_dict, paths_dict = run_batch_ods(
             network_dict['DG'],
-            source='1',
-            destination_lst=destination_lst,
-            weight='backward'
+            source=f'{source_id}',
+            destination_lst=self.tazs_ids,
+            weight='forward'
         )
-        delta_t = time.perf_counter() - t1
-        print('It takes {} seconds to run'.format(delta_t))
+        return dists_dict, paths_dict
 
 
 # Define a new function to simply run shortest path given origin and destination node id.
@@ -129,10 +136,17 @@ if __name__ == "__main__":
     taz_centriod_nodes = gpd.read_file(os.environ["taz"])
     df_nodes_raw = gpd.read_file(os.environ['network_nodes'])
     df_links_raw = gpd.read_file(os.environ['network_links'])
-    # load pnr nodes to park and ride trip
-    pnr_nodes = gpd.read_file(os.environ["parking_lots"])
 
     # init object
+    traffic_network = TrafficNetwork(
+        network_links=df_links_raw,
+        network_nodes=df_nodes_raw,
+        tazs=taz_centriod_nodes
+    )
+
+    traffic_network.get_taz_id_list()
+    traffic_network.convert_abm_links()
+    traffic_network.build_network()
 
     pass
 
