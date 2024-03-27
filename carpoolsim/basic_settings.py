@@ -9,6 +9,8 @@ from pathlib import Path
 os.environ['project_root'] = Path(__file__).parent.parent.as_posix()
 sys.path.append(os.environ['project_root'])
 
+
+# all data information
 os.environ['project_data'] = os.path.join(
     os.environ['project_root'], "data_inputs"
 )
@@ -31,6 +33,11 @@ os.environ['taz'] = os.path.join(
 os.environ['parking_lots'] = os.path.join(
     os.environ['project_data'], 'Park_and_Ride_locations',
     'Park_and_Ride_locations.shp'
+)
+
+os.environ['trip_demands'] = os.path.join(
+    os.environ['project_data'], 'gt_survey',
+    '2022_campus_commute_survey_data_no_zip_na_05122023.csv'
 )
 
 # CRS = "EPSG:3857"  # This is Mercator system that can work for most places globally
