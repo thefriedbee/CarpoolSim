@@ -3,7 +3,7 @@ Define the "schema" of parking lots
 """
 from dataclasses import dataclass
 
-from shapely import Geometry
+from shapely import Point
 
 
 @dataclass
@@ -14,7 +14,7 @@ class ParkAndRideStation:
     lon: float
     lat: float
     capacity: None | int
-    geometry: Geometry
+    geometry: Point
 
     def convert_to_dict(self):
         return {

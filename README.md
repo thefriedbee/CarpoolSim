@@ -1,4 +1,4 @@
-# CarpoolSim: a simulation framework to find carpool trips
+# CarpoolSim: A simulation framework to find carpool trips given Single Occupancy Trips
 
 The structure of the project is shown as follows.
 ```
@@ -50,8 +50,69 @@ Require inputs (all within the "data inputs folder")
    1. gt_survey: a survey of **trip demands** providing origin, destination, depart time, etc.
 
 
+## The data classes for *traffic network* is as follows
 
+Three datasets or shapefiles are necessary to represent a traffic network:
+- TrafficNetworkNode
+- TrafficNetworkLink
+- TrafficAnalysisZone
 
+```mermaid
+classDiagram
+    TrafficNetworkNode: +int nid
+    TrafficNetworkNode: +float lon
+    TrafficNetworkNode: +float lat
+    TrafficNetworkNode: +float x
+    TrafficNetworkNode: +float y
+    TrafficNetworkNode: +Point geometry
+    
+    TrafficNetworkLink: +int a
+    TrafficNetworkLink: +int b
+    TrafficNetworkLink: +str a_b
+    TrafficNetworkLink: +str name
+    TrafficNetworkLink: +float distance
+    TrafficNetworkLink: +float factype
+    TrafficNetworkLink: +float speed_limit
+    TrafficNetworkLink: +LineString geometry
+    
+    TrafficAnalysisZone: +int taz_id
+    TrafficAnalysisZone: +str group_id
+    TrafficAnalysisZone: +Polygon geometry
+```
 
+Another dataset is necessary to define the trip demands by providing the following minimal required set of information.
 
+```mermaid
+classDiagram
+    TripDemand: +int trip_id
+    TripDemand: +float orig_lon
+    TripDemand: +float orig_lat
+    TripDemand: +float dest_lon
+    TripDemand: +float dest_lat
+    TripDemand: +float new_min
+    TripDemand: +Point geometry
+```
+
+The geometry field of "TripDemand" corresponds to the origin of the trip.  Finally, some parking lots can be identified
+and represented to consider park and ride carpool.
+
+```mermaid
+classDiagram
+    ParkAndRideStation: +int station_id
+    ParkAndRideStation: +str name
+    ParkAndRideStation: +float lon
+    ParkAndRideStation: +float lat
+    ParkAndRideStation: +int capacity
+    ParkAndRideStation: +Point geometry
+```
+
+By default, all geometry fields are using "EPSG:4326" (WGS84) projection as inputs.
+
+## Using notebooks for running the tool
+Four Jupyter notebooks are provided to run the package. Users are obligated to modify those notebooks to align
+with their own analysis purpose. The code talks by itself.
+- step0_prepare_data_inputs.ipynb
+- step1_prepare_path_retention_database.ipynb
+- step2_prepare_traffic_demands.ipynb
+- step3_run_carpoolsim.ipynb
 
