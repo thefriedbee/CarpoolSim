@@ -110,7 +110,7 @@ By default, all geometry fields are using "EPSG:4326" (WGS84) projection as inpu
 
 ## Using notebooks for running the tool
 Four Jupyter notebooks are provided to run the package. Users are obligated to modify those notebooks to align
-with their own analysis purpose. The code talks by itself.
+with their own analysis purpose. The code talks by itself in those notebooks.
 - step0_prepare_data_inputs.ipynb
 - step1_prepare_path_retention_database.ipynb
 - step2_prepare_traffic_demands.ipynb
