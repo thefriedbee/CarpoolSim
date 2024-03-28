@@ -111,12 +111,46 @@ Require inputs
 3. One file for traffic demand:
    1. gt_survey: a survey of **trip demands** providing origin, destination, depart time, etc.
 
-
-## Using notebooks for running the tool
+## Use notebooks to run the analysis pipeline
 Four Jupyter notebooks are provided to run the package. Users are obligated to modify those notebooks to align
 with their own analysis purpose. The code talks by itself in those notebooks.
 - step0_prepare_data_inputs.ipynb
 - step1_prepare_path_retention_database.ipynb
 - step2_prepare_traffic_demands.ipynb
 - step3_run_carpoolsim.ipynb
+
+## Configure the quality of carpools
+The tool provides a rich set of parameters as a filtering "safe net" of the tool.
+
+```python
+kwargs = {
+    # use bipartite method. If not, may try to use linear optimization
+    'rt_bipartite': True,
+    # setup print options
+    'verbose': False, 'print_mat': False, 'plot_all': True,
+    # coordinate filters
+    'mu1': 1.5, 'mu2': 0.1, 'dst_max': 5*5280,
+    # reroute filters
+    'delta': 10, 'gamma': 1.3, 'ita': 0.9, 'ita_pnr': 0.5,  # reroute filters
+    # Delta1: control passenger/driver's departure time difference
+    # Delta2: control driver's maximum waiting time
+    'Delta1': 15, 'Delta2': 10, 'Gamma': 0.2,
+    # carpool mode 
+    #   0: direct carpool only;
+    #   1: pnr carpool only; 
+    #   2: both at the same time
+    'mode':0
+}
+```
+
+## How to cite?
+If you use the tool, it is strongly recommended to cite the tool using the following link:
+
+```
+@article{liu2022evaluating,
+  title={Evaluating the Sustainability Impacts of Intelligent Carpooling Systems for SOV Commuters in the Atlanta Region},
+  author={Liu, Diyi and Guin, Angshuman},
+  year={2022}
+}
+```
 
