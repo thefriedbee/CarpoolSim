@@ -6,7 +6,7 @@ Three datasets or shapefiles are necessary to represent a traffic network:
 - TrafficNetworkNode
 - TrafficNetworkLink
 - TrafficAnalysisZone
-
+  
 ```mermaid
 classDiagram
     TrafficNetworkNode: +int nid
