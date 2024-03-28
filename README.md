@@ -147,10 +147,18 @@ kwargs = {
 If you use the tool, it is strongly recommended to cite the tool using the following link:
 
 ```
+@inproceedings{
+   title={Evaluating Potential SOC Commuter Home-to-Work Carpool Using a Scalable and Practical Simulation Framework}
+   author={Liu, Diyi and Fan, Huiying and Guin, Angshuman and Guensler, Randall}
+   year={2024}
+}
+```
+
+Alternatively, you can cite:
+```
 @article{liu2022evaluating,
   title={Evaluating the Sustainability Impacts of Intelligent Carpooling Systems for SOV Commuters in the Atlanta Region},
   author={Liu, Diyi and Guin, Angshuman},
   year={2022}
 }
 ```
-
