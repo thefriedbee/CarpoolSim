@@ -151,10 +151,22 @@ If you use the tool, it is strongly recommended to cite the tool using the follo
    title={Evaluating Potential SOC Commuter Home-to-Work Carpool Using a Scalable and Practical Simulation Framework}
    author={Liu, Diyi and Fan, Huiying and Guin, Angshuman and Guensler, Randall}
    year={2024}
+   booktitle={Journal of Transport Geography}
 }
 ```
 
-Alternatively, you can cite:
+Or,
+```
+@inproceedings{
+   title={CarpoolSim: A Computational Framework Measuring Carpool Potentials Given Travel Demands}
+   author={Liu, Diyi and Fan, Huiying and Guin, Angshuman and Guensler, Randall}
+   year={2024}
+   booktitle={SoftwareX}
+}
+```
+
+
+Or,
 ```
 @article{liu2022evaluating,
   title={Evaluating the Sustainability Impacts of Intelligent Carpooling Systems for SOV Commuters in the Atlanta Region},
