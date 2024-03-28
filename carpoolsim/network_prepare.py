@@ -245,20 +245,14 @@ def point_to_node(
 
 
 def pnr_pre_process(
-        filename: str,
         dict_settings: dict,
-        input_as_df: bool = False,
 ) -> pd.DataFrame:
-    df_links = dict_settings['network']['bike']['links']
-    freeway_links = dict_settings['network']['bike']['links']
+    df_links = dict_settings['network']['car']['links']
+    freeway_links = dict_settings['network']['car']['links']
+    df_points = dict_settings['network']['car']['nodes']
     walk_speed = dict_settings['walk_speed']
     grid_size = dict_settings['grid_size']
     ntp_dist_thresh = dict_settings['ntp_dist_thresh']
-
-    if input_as_df:
-        df_points = filename
-    else:
-        df_points = pd.read_csv(filename)
 
     df_points = add_xy(df_points, 'lat', 'lon', 'x', 'y', 'x_sq', 'y_sq', grid_size=grid_size)
     # still use prefix o_ for convenience

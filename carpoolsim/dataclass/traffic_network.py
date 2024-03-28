@@ -51,11 +51,13 @@ class TrafficNetworkNode:
 @dataclass
 class TrafficAnalysisZone:
     taz_id: int
+    group_id: str  # group TAZ into contingent groups
     geometry: Polygon
 
     def convert_to_dict(self):
         return {
             "taz_id": self.taz_id,
-            "geometry": self.geometry
+            "group_id": self.group_id,
+            "geometry": self.geometry,
         }
 
