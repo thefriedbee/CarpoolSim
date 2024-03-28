@@ -1,6 +1,6 @@
 # CarpoolSim: A simulation framework to find carpool trips given Single Occupancy Trips
 
-## The data classes for *traffic network* is as follows
+## The required data classes for modeling *traffic network* is listed as follows
 
 Three datasets or shapefiles are necessary to represent a traffic network:
 - TrafficNetworkNode
@@ -30,7 +30,7 @@ classDiagram
     TrafficAnalysisZone: +Polygon geometry
 ```
 
-Another dataset is necessary to define the trip demands by providing the following minimal required set of information.
+Another dataset is necessary to define the travel demands by providing the following minimal required set of information.
 
 ```mermaid
 classDiagram
