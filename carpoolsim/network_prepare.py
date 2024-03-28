@@ -209,8 +209,9 @@ def point_to_node(
         i += 1
         try:
             # find links in the grid
-            df_links_i = df_links[df_links['minx_sq'] <= row['x_sq']][df_links['maxx_sq'] >= row['x_sq']][
-                df_links['maxy_sq'] >= row['y_sq']][df_links['miny_sq'] <= row['y_sq']]
+            filt1 = (df_links['minx_sq'] <= row['x_sq']) & (row['x_sq'] <= df_links['maxx_sq'])
+            filt2 = (df_links['miny_sq'] <= row['y_sq']) & (row['y_sq'] <= df_links['maxy_sq'])
+            df_links_i = df_links[filt1 & filt2]
             # if one cannot find df links, it is an external point, try to pick a highway access link
             if len(df_links_i) == 0:
                 df_links_i = freeway_links
@@ -219,13 +220,13 @@ def point_to_node(
             linki = df_links_i.loc[link_id_dist[0], :]
             # find the closest node on the link
             df_coords = df_points.loc[ind, 'geometry'].coords[0]
-            dist1 = calculate_dist(df_coords[0], df_coords[1], linki['Ax'], linki['Ay'])
-            dist2 = calculate_dist(df_coords[0], df_coords[1], linki['Bx'], linki['By'])
+            dist1 = calculate_dist(df_coords[0], df_coords[1], linki['ax'], linki['ay'])
+            dist2 = calculate_dist(df_coords[0], df_coords[1], linki['bx'], linki['by'])
             if (dist1 > dist_thresh) and (dist2 > dist_thresh):
                 df_points.loc[ind, 'node_id'] = -1
                 df_points.loc[ind, 'node_t'] = -1
             else:
-                df_points.loc[ind, 'node_id'] = linki['A'] if dist1 < dist2 else linki['B']
+                df_points.loc[ind, 'node_id'] = linki['a'] if dist1 < dist2 else linki['b']
                 df_points.loc[ind, 'node_t'] = dist1 / walk_speed / 5280.0 if \
                     dist1 < dist2 else dist2 / walk_speed / 5280.0
             # add distance o_d, d_d to dataframe
@@ -245,16 +246,27 @@ def point_to_node(
 
 
 def pnr_pre_process(
+        pnr_lots: gpd.GeoDataFrame,
         dict_settings: dict,
 ) -> pd.DataFrame:
     df_links = dict_settings['network']['car']['links']
     freeway_links = dict_settings['network']['car']['links']
-    df_points = dict_settings['network']['car']['nodes']
+
+    # df_points = dict_settings['network']['car']['nodes']
+    df_points = pnr_lots
+
     walk_speed = dict_settings['walk_speed']
     grid_size = dict_settings['grid_size']
     ntp_dist_thresh = dict_settings['ntp_dist_thresh']
 
-    df_points = add_xy(df_points, 'lat', 'lon', 'x', 'y', 'x_sq', 'y_sq', grid_size=grid_size)
+    df_points = add_xy(
+        df_points,
+        'lat', 'lon',
+        'x', 'y',
+        'x_sq', 'y_sq',
+        grid_size=grid_size
+    )
+
     # still use prefix o_ for convenience
     df_points = point_to_node(
         df_points, df_links, False, walk_speed,

@@ -633,7 +633,7 @@ class TripCluster:
         trips = self.trips
         nrow, ncol = self.nrow, self.ncol
         # simple method
-        depart_lst = np.array(trips['newmin'].tolist()).reshape((1, -1))  # depart minute
+        depart_lst = np.array(trips['new_min'].tolist()).reshape((1, -1))  # depart minute
         mat = np.tile(depart_lst.transpose(), (1, ncol))
         mat = np.tile(depart_lst, (nrow, 1)) - mat  # depart time difference (driver's depart - pax depart)
         if default_rule:
@@ -665,7 +665,7 @@ class TripCluster:
         """
         # step 1. Measure depart time difference within threshold time (default is 15 minutes)
         nrow, ncol = self.nrow, self.ncol
-        depart_lst = np.array(self.trips['newmin'].tolist()).reshape((1, -1))  # depart minute
+        depart_lst = np.array(self.trips['new_min'].tolist()).reshape((1, -1))  # depart minute
         # print('depart list: ', depart_lst)
         # compare departure time difference
         mat = np.tile(depart_lst.transpose(), (1, ncol))
@@ -719,8 +719,8 @@ class TripCluster:
             # access information (path, time, distance)
             info1 = self.pnr_access_info[trip_id1, sid]
             info2 = self.pnr_access_info[trip_id2, sid]
-            t1 = self.trips['newmin'].iloc[trip_id1] + info1[1]  # arrival time at pnr for person 1
-            t2 = self.trips['newmin'].iloc[trip_id2] + info2[1]  # arrival time at pnr for person 2
+            t1 = self.trips['new_min'].iloc[trip_id1] + info1[1]  # arrival time at pnr for person 1
+            t2 = self.trips['new_min'].iloc[trip_id2] + info2[1]  # arrival time at pnr for person 2
             # the number of minutes it takes for passenger to wait for the driver
             mat[trip_id1][trip_id2] = t1 - t2
             mat[trip_id2][trip_id1] = t2 - t1
@@ -752,9 +752,9 @@ class TripCluster:
         """
         # step 2. Maximum waiting time for driver is Delta2 (default is 5 minutes)
         nrow, ncol = self.nrow, self.ncol
-        # driver_lst = np.array(self.trips_front['newmin'].tolist()).reshape((1, -1))  # depart minute
+        # driver_lst = np.array(self.trips_front['new_min'].tolist()).reshape((1, -1))  # depart minute
         # for non-simulation with time case, passenger <==> driver have the same scope
-        passenger_lst = np.array(self.trips['newmin'].tolist()).reshape((1, -1))
+        passenger_lst = np.array(self.trips['new_min'].tolist()).reshape((1, -1))
         # compare departure time difference
         dri_arr = np.tile(passenger_lst.reshape((-1, 1)), (1, ncol)) + self.tt_matrix_p1
         pax_dep = np.tile(passenger_lst.reshape((1, -1)), (nrow, 1))  # depart time difference
@@ -1086,7 +1086,7 @@ class TripCluster:
         """
         if trips is None:
             trips = self.trips
-        self.trip_summary_df = trips[['newmin']].copy()
+        self.trip_summary_df = trips[['new_min']].copy()
         # init new columns (before/after travel time and distances)
         # values are placeholder
         self.trip_summary_df = self.trip_summary_df.assign(
@@ -1177,9 +1177,9 @@ class TripCluster:
         :return:
         """
         nrow, ncol = self.nrow, self.ncol
-        # left_trips_filt = self.trips.SOV & (self.trips.newmin > self.t0 + self.epsilon)
+        # left_trips_filt = self.trips.SOV & (self.trips.new_min > self.t0 + self.epsilon)
         # dropped_indexes = self.trips.loc[~left_trips_filt, :].index.tolist()
-        self.trip_summary_df = self.trips[['newmin']].copy()
+        self.trip_summary_df = self.trips[['new_min']].copy()
 
         # init new columns (before/after travel time and distances)
         # values are placeholder
@@ -1335,7 +1335,7 @@ class TripCluster:
         :return: lastly used plotting axes
         """
         # print depart time diff
-        tod_1, tod_2 = self.trips.iloc[intind1, :]['newmin'], self.trips.iloc[intind2, :]['newmin']
+        tod_1, tod_2 = self.trips.iloc[intind1, :]['new_min'], self.trips.iloc[intind2, :]['new_min']
         tt1 = self.tt_matrix_p1[intind1, intind2]
         sb = [ScaleBar(1, "m", dimension="si-length", fixed_value=5*1000/0.621371,
                        box_alpha=0.5, location="upper left",
@@ -1433,7 +1433,7 @@ class TripCluster:
         else:
             sid = trips.loc[idx1, 'station']
         # print depart time diff
-        tod_1, tod_2 = trips.loc[idx1, :]['newmin'], trips.loc[idx2, :]['newmin']
+        tod_1, tod_2 = trips.loc[idx1, :]['new_min'], trips.loc[idx2, :]['new_min']
         tt1, tt2 = None, None
 
         if self.pnr_access_info[intind1, sid] is not None:

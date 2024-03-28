@@ -40,7 +40,7 @@ class TripClusterWithTime(TripCluster):
             'orig_inner_id', 'dest_inner_id'],
             axis=1, errors='ignore'
         )
-        self.df_all = df_all.sort_values(by=['newmin']).copy()
+        self.df_all = df_all.sort_values(by=['new_min']).copy()
         self.df_all['pnr'] = None
         # time information
         self.t0 = 0  # now
@@ -48,11 +48,11 @@ class TripClusterWithTime(TripCluster):
         self.delta = delta_t
         self.t1 = self.epsilon + self.delta  # latest future time to be considered carpool
         # select data to init CarpoolSim matching
-        df = self.df_all.loc[self.df_all['newmin'] < self.t1, :]
+        df = self.df_all.loc[self.df_all['new_min'] < self.t1, :]
         # notice, needs to overwrite many methods and matrices of Trip Cluster since we consider
         # a rectangular carpool-able matrix instead of square matrix,
         # (future trips queries can only be passengers)
-        self.trips_front = df.loc[df['newmin'] < self.t0 + self.epsilon, :]
+        self.trips_front = df.loc[df['new_min'] < self.t0 + self.epsilon, :]
         # NOTE: here df becomes self.trips (passegners + drivers);
         #   self.trips_front is for all drivers
         super().__init__(
@@ -167,7 +167,7 @@ class TripClusterWithTime(TripCluster):
             ind_df = bt_summ_ind
         else:
             ind_df = lp_summ_ind
-        keep_trips_filt = (ind_df.newmin >= self.t0 + self.epsilon) & ind_df.SOV
+        keep_trips_filt = (ind_df.new_min >= self.t0 + self.epsilon) & ind_df.SOV
         dropped_indexes = ind_df.loc[~keep_trips_filt, :].index.tolist()
         if verbose:
             left_ind = ind_df.loc[keep_trips_filt, :].index.tolist()
@@ -200,7 +200,7 @@ class TripClusterWithTime(TripCluster):
         dropped_indexes = self.df_all.index.isin(dropped_indexes)
         self.df_all = self.df_all[~dropped_indexes]  # no need to keep matched trips recorded in df
         # step 3. select new interested trips to re-init object use time filter
-        time_filt = (self.df_all['newmin'] >= self.t0) & (self.df_all['newmin'] < self.t1)
+        time_filt = (self.df_all['new_min'] >= self.t0) & (self.df_all['new_min'] < self.t1)
         # # step 4. reset values for the next computation
         # self.trip is updated here
         df = self.df_all.loc[time_filt, :].copy()
@@ -209,14 +209,14 @@ class TripClusterWithTime(TripCluster):
             parking_lots=self.parking_lots, update_now_str=False
         )
         # trips front are drivers
-        self.trips_front = self.trips.loc[self.trips['newmin'] < self.t0 + self.epsilon, :].copy()
+        self.trips_front = self.trips.loc[self.trips['new_min'] < self.t0 + self.epsilon, :].copy()
         self.nrow = len(self.trips_front)
         self.ncol = len(self.trips)
         # truncate square matrices to rectangular matrices
         self.truncate_matrices()  # also update truncation
         if verbose:
             print('{} potential drivers; {} potential passengers!'.format(len(self.trips_front), len(self.trips)))
-            # print('trip depart time: ', self.trips.newmin.tolist())
+            # print('trip depart time: ', self.trips.new_min.tolist())
             pass
 
     def run_all_sim(self, kwargs=None):
@@ -265,8 +265,8 @@ class TripClusterWithTime(TripCluster):
         :return:
         """
         nrow, ncol = self.nrow, self.ncol
-        passenger_lst = np.array(self.trips['newmin'].tolist()).reshape((1, -1))  # depart minute
-        driver_lst = np.array(self.trips_front['newmin'].tolist()).reshape((1, -1))  # depart minute
+        passenger_lst = np.array(self.trips['new_min'].tolist()).reshape((1, -1))  # depart minute
+        driver_lst = np.array(self.trips_front['new_min'].tolist()).reshape((1, -1))  # depart minute
         # compare departure time difference
         dri_dep = np.tile(driver_lst.transpose(), (1, ncol))
         pax_dep = np.tile(passenger_lst, (nrow, 1))
@@ -284,8 +284,8 @@ class TripClusterWithTime(TripCluster):
     def compute_depart_01_matrix_pre_pnr(self, Delta1: float = 15, default_rule: bool = False):
         nrow, ncol = self.nrow, self.ncol
         # simple method
-        driver_lst = np.array(self.trips_front['newmin'].tolist()).reshape((1, -1))
-        passenger_lst = np.array(self.trips['newmin'].tolist()).reshape((1, -1))  # depart minute
+        driver_lst = np.array(self.trips_front['new_min'].tolist()).reshape((1, -1))
+        passenger_lst = np.array(self.trips['new_min'].tolist()).reshape((1, -1))  # depart minute
         mat = np.tile(driver_lst.transpose(), (1, ncol))
         mat = np.tile(passenger_lst, (nrow, 1)) - mat  # depart time difference (driver's depart - pax depart)
         if default_rule:
@@ -311,8 +311,8 @@ class TripClusterWithTime(TripCluster):
         nrow, ncol = self.nrow, self.ncol
         # print("nrow: {}; ncol: {}".format(nrow, ncol))
         # print(self.tt_matrix_p1.shape)
-        driver_lst = np.array(self.trips_front['newmin'].tolist()).reshape((-1, 1))  # depart minute
-        passenger_lst = np.array(self.trips['newmin'].tolist()).reshape((1, -1))  # depart minute
+        driver_lst = np.array(self.trips_front['new_min'].tolist()).reshape((-1, 1))  # depart minute
+        passenger_lst = np.array(self.trips['new_min'].tolist()).reshape((1, -1))  # depart minute
         # print("driver lst:", driver_lst.tolist())
         # print("passenger lst:", passenger_lst.tolist())
         # compare departure time difference
@@ -373,8 +373,8 @@ class TripClusterWithTime(TripCluster):
             # access information (path, time, distance)
             info1 = self.pnr_access_info[trip_id1, sid]
             info2 = self.pnr_access_info[trip_id2, sid]
-            t1 = self.trips['newmin'].iloc[trip_id1] + info1[1]  # arrival time at pnr for person 1
-            t2 = self.trips['newmin'].iloc[trip_id2] + info2[1]  # arrival time at pnr for person 2
+            t1 = self.trips['new_min'].iloc[trip_id1] + info1[1]  # arrival time at pnr for person 1
+            t2 = self.trips['new_min'].iloc[trip_id2] + info2[1]  # arrival time at pnr for person 2
             # the # of minutes it takes for passenger to arrive after driver arrived
             mat[trip_id1][trip_id2] = t1 - t2
             mat[trip_id2][trip_id1] = t2 - t1
