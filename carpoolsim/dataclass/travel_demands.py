@@ -9,33 +9,32 @@ import pandas as pd
 
 @dataclass
 class TripDemand:
+    trip_id: int
     # spatial information
     orig_lon: float
     orig_lat: float
-    orig_taz: int  # TAZ id
-    orig_taz_group: int   # TAZ group id (for multiprocessing)
 
     dest_lon: float
     dest_lat: float
-    dest_taz: int  # TAZ id
-    dest_taz_group: int  # TAZ group id (for multiprocessing)
     # temporal information
     # I don't care the date, but time of the day is important
-    depart_time: datetime.datetime
+    new_min: float
 
     def convert_to_list(self):
         return [
-            self.orig_lon, self.orig_lat, self.orig_taz, self.orig_taz_group,
-            self.dest_lon, self.dest_lat, self.dest_taz, self.dest_taz_group,
-            self.depart_time
+            self.trip_id,
+            self.orig_lon, self.orig_lat,
+            self.dest_lon, self.dest_lat,
+            self.new_min
         ]
 
     def convert_to_pandas_series(self):
         lst = self.convert_to_list()
         idx = [
-            "orig_lon", "orig_lat", "orig_taz", "orig_taz_group",
-            "dest_lon", "dest_lat", "dest_taz", "dest_taz_group",
-            "depart_time"
+            "trip_id",
+            "orig_lon", "orig_lat",
+            "dest_lon", "dest_lat",
+            "new_min"
         ]
         ser = pd.Series(data=lst, index=idx)
         return ser
