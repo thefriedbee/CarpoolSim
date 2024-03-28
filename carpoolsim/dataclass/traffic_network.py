@@ -11,6 +11,7 @@ class TrafficNetworkLink:
     a: int  # link's starting node id
     b: int  # link's ending node id
     a_b: str  # links id (defined by node_a and node_b)
+    name: str  # name of the road link
     distance: float  # travel distance along the link
     factype: str  # type of the road (e.g., highway, etc.)
     speed_limit: float  # speed limit of the road (i.e., travel speed)
@@ -21,6 +22,7 @@ class TrafficNetworkLink:
             "a": self.a,
             "b": self.b,
             "a_b": self.a_b,
+            "name": self.name,
             "distance": self.distance,
             "factype": self.factype,
             "speed_limit": self.speed_limit,

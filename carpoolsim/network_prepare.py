@@ -58,15 +58,21 @@ def initialize_abm15_links(
     df_links_raw['tmp'] = df_links_raw['factype'].map(mapper)
     df_links_raw['tmp'] = df_links_raw['tmp'].fillna(35)
     df_links_raw.loc[df_links_raw[spd] == 0, spd] = df_links_raw.loc[df_links_raw[spd] == 0, 'tmp']
-    df_links = df_links_raw[['a', 'b', 'a_b', 'geometry', spd, 'distance', 'factype']]
+    df_links = df_links_raw[['a', 'b', 'a_b', 'name', 'geometry', spd, 'distance', 'factype']]
 
     # add node information to links
     df_links = df_links.merge(
-        df_nodes.rename(columns={'nid': 'a', 'x': 'ax', 'y': 'ay', 'lat': 'a_lat', 'lon': 'a_lon'}),
+        df_nodes.rename(columns={
+            'nid': 'a',
+            'x': 'ax', 'y': 'ay',
+            'lat': 'a_lat', 'lon': 'a_lon'}),
         how='left', on='a'
     )
     df_links = df_links.merge(
-        df_nodes.rename(columns={'nid': 'b', 'x': 'bx', 'y': 'by', 'lat': 'b_lat', 'lon': 'b_lon'}),
+        df_nodes.rename(columns={
+            'nid': 'b',
+            'x': 'bx', 'y': 'by',
+            'lat': 'b_lat', 'lon': 'b_lon'}),
         how='left', on='b'
     )
 

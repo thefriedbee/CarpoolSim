@@ -6,8 +6,6 @@ A traffic network class is defined consists of three parts:
 - network nodes: nodes (end points) of the network
 - network tazs: traffic analysis zones
 """
-import os
-import pickle
 import time
 
 import geopandas as gpd

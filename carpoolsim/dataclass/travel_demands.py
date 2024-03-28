@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import pandas as pd
 from shapely import Point
 
+
 @dataclass
 class TripDemand:
     trip_id: int

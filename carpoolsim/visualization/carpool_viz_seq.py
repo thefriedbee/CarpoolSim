@@ -66,9 +66,9 @@ def plot_seq(
 
     # load skeleton network for visualization (if needed)
     if skeleton == 'highway':
-        trip_df_skeleton = gpd_df.loc[gpd_df['NAME'].str.contains('I-', na=False), :]
+        trip_df_skeleton = gpd_df.loc[gpd_df['name'].str.contains('I-', na=False), :]
     elif skeleton is not None:  # input should be a list of names
-        trip_df_skeleton = gpd_df.loc[gpd_df['NAME'].str.contains(skeleton, na=False), :]
+        trip_df_skeleton = gpd_df.loc[gpd_df['name'].str.contains(skeleton, na=False), :]
 
     if skeleton == 'highway' or skeleton is not None:
         # project skeleton network
@@ -79,27 +79,27 @@ def plot_seq(
     # convert sequential node ID to link ID
     As, Bs = trip_seq[0:-1:1], trip_seq[1:len(trip_seq):1]
     trip_seq = [a + '_' + b for a, b in zip(As, Bs)]  # link IDs
-    trip_df = gpd_df.loc[gpd_df['A_B'].isin(trip_seq), :]
+    trip_df = gpd_df.loc[gpd_df['a_b'].isin(trip_seq), :]
     trip_df.to_crs(epsg=out_crs_code, inplace=True)  # re-project before plot
     # use merge method to keep the sequence of trajectory correct
     trip_seq = pd.DataFrame(trip_seq, columns=['seq'])
-    trip_df = trip_df.merge(trip_seq, left_on='A_B', right_on='seq', how='left')
+    trip_df = trip_df.merge(trip_seq, left_on='a_b', right_on='seq', how='left')
     trip_df.plot(ax=ax, color=color, alpha=0.3, linewidth=linewidth)
 
     if plt_arrow:
         for index, row in trip_df.iterrows():
             # original projection in feet
-            dx = abs(row.Bx - row.Ax)
-            dy = abs(row.By - row.Ay)
+            dx = abs(row.bx - row.ax)
+            dy = abs(row.by - row.ay)
             # only plot arrow if link length is greater than 2000 ft.
             head_width = 0
             if dx + dy > 2000:
                 head_width = 300
             # don't plot arrow is distance if link smaller than a mile
-            Ax, Ay = transform(in_crs, out_crs, row.Ax, row.Ay)
-            Bx, By = transform(in_crs, out_crs, row.Bx, row.By)
+            a_x, a_y = transform(in_crs, out_crs, row.ax, row.ay)
+            b_x, b_y = transform(in_crs, out_crs, row.bx, row.by)
             ax.arrow(
-                Ax, Ay, Bx - Ax, By - Ay,
+                a_x, a_y, b_x - a_x, b_y - a_y,
                 shape='left', width=150, color=arrow_color, head_width=head_width,
                 length_includes_head=True
             )
