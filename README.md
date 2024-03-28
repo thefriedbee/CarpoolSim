@@ -1,5 +1,13 @@
 # CarpoolSim: A simulation framework to find carpool trips given Single Occupancy Trips
 
+## Two different kinds of carpooling
+
+Among two travelers, there are two possible ways of direct carpool
+![abc](public_files/direct_carpool.png)
+
+Among two travelers, given a middle point to meet, there are two possible ways of carpooling (i.e., Park-and-Ride Carpool)
+![abc](public_files/pnr_carpool.png)
+
 ## The required data classes for modeling *traffic network* is listed as follows
 
 Three datasets or shapefiles are necessary to represent a traffic network:
@@ -142,6 +150,10 @@ kwargs = {
     'mode':0
 }
 ```
+
+A slightly more detailed explaination is given as follows:
+![abc](public_files/params_table.png)
+
 
 ## How to cite?
 If you use the tool, it is strongly recommended to cite the tool using the following link:
