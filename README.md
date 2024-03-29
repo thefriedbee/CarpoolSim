@@ -156,7 +156,8 @@ kwargs = {
 ```
 
 A slightly more detailed explaination is given as follows:
-![abc](public_files/params_table.png)
+
+![A table describing the meaning of each parameter in the tool](public_files/params_table.png)
 
 
 ## How to cite?
