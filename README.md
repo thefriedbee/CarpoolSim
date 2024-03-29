@@ -1,12 +1,16 @@
 # CarpoolSim: A simulation framework to find carpool trips given Single Occupancy Trips
 
+One can refer to the [GitHub repository](https://github.com/thefriedbee/CarpoolSim) for source code and more information about this package.
+
 ## Two different kinds of carpooling
 
-Among two travelers, there are two possible ways of direct carpool
-![abc](public_files/direct_carpool.png)
+Between two travelers, there are two possible schemes of direct carpool
 
-Among two travelers, given a middle point to meet, there are two possible ways of carpooling (i.e., Park-and-Ride Carpool)
-![abc](public_files/pnr_carpool.png)
+![A screenshot of direct carpool plans](public_files/direct_carpool.png)
+
+Between two travelers, given a middle point to meet, there are two possible schemes of carpooling (i.e., Park-and-Ride Carpool)
+
+![A screenshot of park and ride carpool](public_files/pnr_carpool.png)
 
 ## The required data classes for modeling *traffic network* is listed as follows
 
