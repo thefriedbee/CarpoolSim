@@ -2,6 +2,39 @@
 
 One can refer to the [GitHub repository](https://github.com/thefriedbee/CarpoolSim) for source code and more information about this package.
 
+
+## How to cite?
+If you use the tool, it is strongly recommended to cite the tool using the following link:
+
+```
+@inproceedings{
+   title={Evaluating Potential SOC Commuter Home-to-Work Carpool Using a Scalable and Practical Simulation Framework}
+   author={Liu, Diyi and Fan, Huiying and Guin, Angshuman and Guensler, Randall}
+   year={2024}
+   booktitle={Journal of Transport Geography}
+}
+```
+
+Or,
+```
+@inproceedings{
+   title={CarpoolSim: A Computational Framework Measuring Carpool Potentials Given Travel Demands}
+   author={Liu, Diyi and Fan, Huiying and Guin, Angshuman and Guensler, Randall}
+   year={2024}
+   booktitle={SoftwareX}
+}
+```
+
+
+Or,
+```
+@article{liu2022evaluating,
+  title={Evaluating the Sustainability Impacts of Intelligent Carpooling Systems for SOV Commuters in the Atlanta Region},
+  author={Liu, Diyi and Guin, Angshuman},
+  year={2022}
+}
+```
+
 ## Two different kinds of carpooling
 
 Between two travelers, there are two possible schemes of direct carpool
@@ -159,35 +192,3 @@ A slightly more detailed explaination is given as follows:
 
 ![A table describing the meaning of each parameter in the tool](public_files/params_table.png)
 
-
-## How to cite?
-If you use the tool, it is strongly recommended to cite the tool using the following link:
-
-```
-@inproceedings{
-   title={Evaluating Potential SOC Commuter Home-to-Work Carpool Using a Scalable and Practical Simulation Framework}
-   author={Liu, Diyi and Fan, Huiying and Guin, Angshuman and Guensler, Randall}
-   year={2024}
-   booktitle={Journal of Transport Geography}
-}
-```
-
-Or,
-```
-@inproceedings{
-   title={CarpoolSim: A Computational Framework Measuring Carpool Potentials Given Travel Demands}
-   author={Liu, Diyi and Fan, Huiying and Guin, Angshuman and Guensler, Randall}
-   year={2024}
-   booktitle={SoftwareX}
-}
-```
-
-
-Or,
-```
-@article{liu2022evaluating,
-  title={Evaluating the Sustainability Impacts of Intelligent Carpooling Systems for SOV Commuters in the Atlanta Region},
-  author={Liu, Diyi and Guin, Angshuman},
-  year={2022}
-}
-```
