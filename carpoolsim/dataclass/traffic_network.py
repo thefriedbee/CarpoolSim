@@ -1,23 +1,23 @@
 """
 Define the standard schema of network links file
 """
-from dataclasses import dataclass
-
+from pydantic.dataclasses import dataclass
+from pydantic import Field
 from shapely import Point, LineString, Polygon
 
 
 @dataclass
 class TrafficNetworkLink:
-    a: int  # link's starting node id
-    b: int  # link's ending node id
-    a_b: str  # links id (defined by node_a and node_b)
-    name: str  # name of the road link
-    distance: float  # travel distance along the link
-    factype: str  # type of the road (e.g., highway, etc.)
-    speed_limit: float  # speed limit of the road (i.e., travel speed)
-    geometry: LineString  # geometry of the link (for visualization purpose)
+    a: int = Field(description="link's starting node id")
+    b: int = Field(description="link's ending node id")
+    a_b: str = Field(description="links id (defined by node_a and node_b)")
+    name: str = Field(description="name of the road link")
+    distance: float = Field(ge=0, description="The travel distance along the link")
+    factype: str = Field(description="type of the road (e.g., highway, etc.)")
+    speed_limit: float = Field(ge=0, le=100, description="The speed limit of the road (in mph)")
+    geometry: LineString = Field(description="geometry of the link (for visualization purpose)")
 
-    def convert_to_dict(self):
+    def convert_to_dict(self) -> dict:
         return {
             "a": self.a,
             "b": self.b,
@@ -32,15 +32,15 @@ class TrafficNetworkLink:
 
 @dataclass
 class TrafficNetworkNode:
-    nid: int
-    lon: float
-    lat: float
+    nid: int = Field(description="The traffic network node id")
+    lon: float = Field(ge=-180, le=180, description="The longitude of the node")
+    lat: float = Field(ge=-90, le=90, description="The latitude of the node")
     # projected coordinates (need to choose the correct projection)
-    x: float
-    y: float
-    geometry: Point
+    x: float = Field(description="The projected x-coordinate of the node")
+    y: float = Field(description="The projected y-coordinate of the node")
+    geometry: Point = Field(description="The geometry of the node")
 
-    def convert_to_dict(self):
+    def convert_to_dict(self) -> dict:
         return {
             "nid": self.nid,
             "lon": self.lon,
@@ -52,11 +52,11 @@ class TrafficNetworkNode:
 
 @dataclass
 class TrafficAnalysisZone:
-    taz_id: int
-    group_id: str  # group TAZ into contingent groups
-    geometry: Polygon
+    taz_id: int = Field(description="The traffic analysis zone id")
+    group_id: str = Field(description="group TAZ into contingent groups")
+    geometry: Polygon = Field(description="The geometry of the traffic analysis zone")
 
-    def convert_to_dict(self):
+    def convert_to_dict(self) -> dict:
         return {
             "taz_id": self.taz_id,
             "group_id": self.group_id,

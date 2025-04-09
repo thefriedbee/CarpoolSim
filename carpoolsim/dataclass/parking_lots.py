@@ -1,22 +1,22 @@
 """
 Define the "schema" of parking lots
 """
-from dataclasses import dataclass
-
+from pydantic.dataclasses import dataclass
+from pydantic import Field
 from shapely import Point
 
 
 @dataclass
 class ParkAndRideStation:
     """Standard class to represent a parking lot"""
-    station_id: int
-    name: str
-    lon: float
-    lat: float
-    capacity: None | int
-    geometry: Point
+    station_id: int = Field(description="The parking lot id")
+    name: str = Field(description="The name of the parking lot")
+    lon: float = Field(ge=-180, le=180, description="The longitude of the parking lot")
+    lat: float = Field(ge=-90, le=90, description="The latitude of the parking lot")
+    capacity: None | int = Field(description="The capacity of the parking lot (None if unknown)")
+    geometry: Point = Field(description="The geometry of the parking lot")
 
-    def convert_to_dict(self):
+    def convert_to_dict(self) -> dict:
         return {
             "station_id": self.station_id,
             "name": self.name,
