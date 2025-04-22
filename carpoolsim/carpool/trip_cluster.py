@@ -18,6 +18,7 @@ import contextily as cx
 import carpoolsim.carpool_solver.bipartite_solver as tg
 from carpoolsim.visualization.carpool_viz_seq import plot_seq
 from carpoolsim.database.query_database import query_od_info
+import carpoolsim.carpool.trip_filters as filts
 
 plt.rcParams.update({'font.size': 22})
 np.set_printoptions(precision=3)
@@ -26,13 +27,13 @@ np.set_printoptions(precision=3)
 # TripHolder is depreciated. Use this class for all kinds of carpool computation tasks
 class TripCluster:
     def __init__(
-            self,
-            df: pd.DataFrame,
-            network: nx.DiGraph,
-            links: pd.DataFrame,
-            engine: sqlalchemy.Engine,
-            parking_lots: pd.DataFrame | None = None,
-            update_now_str: bool = True
+        self,
+        df: pd.DataFrame,
+        network: nx.DiGraph,
+        links: pd.DataFrame,
+        engine: sqlalchemy.Engine,
+        parking_lots: pd.DataFrame | None = None,
+        update_now_str: bool = True
     ) -> None:
         """
         This TripCluster class tries to substitute the old TripHolder class.
@@ -209,10 +210,10 @@ class TripCluster:
         return pth_nodes, tt, dst
 
     def generate_pnr_trip_map_filt(
-            self,
-            delta: float = 15,
-            gamma: float = 1.5,
-            trips: pd.DataFrame | None = None,
+        self,
+        delta: float = 15,
+        gamma: float = 1.5,
+        trips: pd.DataFrame | None = None,
     ):
         """
         :param delta: maximum reroute time (in minutes) acceptable for the driver
@@ -305,13 +306,13 @@ class TripCluster:
         return lst[i]
 
     def compute_01_matrix_to_station_p1(
-            self,
-            threshold_dist: float = 5280 * 5,
-            mu1: float = 1.3,
-            mu2: float = 0.3,
-            use_mu2: bool =True,
-            trips: pd.DataFrame | None =None,
-            print_mat: bool = True,
+        self,
+        threshold_dist: float = 5280 * 5,
+        mu1: float = 1.3,
+        mu2: float = 0.3,
+        use_mu2: bool =True,
+        trips: pd.DataFrame | None =None,
+        print_mat: bool = True,
     ):
         """
         For each trip, compute the parking lots that can be used as the "meetings point" for carpooled trip.
@@ -389,9 +390,9 @@ class TripCluster:
                 # print(self.pnr_01_matrix[:8, :8])
 
     def compute_01_matrix_to_station_p2(
-            self,
-            delta: float = 15,
-            gamma: float = 1.5,
+        self,
+        delta: float = 15,
+        gamma: float = 1.5,
     ) -> None:
         """
         Make sure each SOV trip can go through PNR station without too much extra costs
@@ -405,12 +406,12 @@ class TripCluster:
         self.generate_pnr_trip_map_filt(delta=delta, gamma=gamma)
 
     def compute_carpool(
-            self,
-            int_idx1: int,
-            int_idx2: int,
-            print_dist: bool = False,
-            fill_mat: bool = True,
-            fixed_role: bool = False,
+        self,
+        int_idx1: int,
+        int_idx2: int,
+        print_dist: bool = False,
+        fill_mat: bool = True,
+        fixed_role: bool = False,
     ):
         """
         Given the integer index of two trips (of the trip DataFrame self.df),
@@ -494,12 +495,12 @@ class TripCluster:
         return (d1_ml_p1 + d1_ml_p2 + d1_ml_p3), (d1_p_p1[:-1] + d1_p_p2[:-1] + d1_p_p3)
 
     def compute_carpool_pnr(
-            self,
-            int_idx1: int, int_idx2: int,
-            print_dist: bool = False,
-            fill_mat: bool = True,
-            fixed_role: bool = False,
-            trips: pd.DataFrame | None = None
+        self,
+        int_idx1: int, int_idx2: int,
+        print_dist: bool = False,
+        fill_mat: bool = True,
+        fixed_role: bool = False,
+        trips: pd.DataFrame | None = None
     ):
         """
         Given the integer index of two trips (of the trip DataFrame self.df),
@@ -608,9 +609,9 @@ class TripCluster:
         print(print_str.format(max(nrow, ncol), time.time() - t0))
 
     def compute_depart_01_matrix_pre_pnr(
-            self,
-            Delta1: float = 15,
-            default_rule: bool = False,
+        self,
+        Delta1: float = 15,
+        default_rule: bool = False,
     ):
         """
         For park and ride, the requirements are:
@@ -649,9 +650,9 @@ class TripCluster:
                                   (np.absolute(mat) <= Delta1)).astype(np.bool_)
 
     def compute_depart_01_matrix_pre(
-            self,
-            Delta1: float = 15,
-            default_rule: bool = True,
+        self,
+        Delta1: float = 15,
+        default_rule: bool = True,
     ):
         """
         Required: must run self.compute_diagonal function to compute diagonal travel information?
@@ -688,10 +689,10 @@ class TripCluster:
                               (np.absolute(mat) <= Delta1)).astype(np.bool_)
 
     def compute_depart_01_matrix_post_pnr(
-            self,
-            Delta2: float = 10,
-            Gamma: float = 0.2,
-            default_rule: bool = True,
+        self,
+        Delta2: float = 10,
+        Gamma: float = 0.2,
+        default_rule: bool = True,
     ):
         """
         Filter PNR trips considering driver's waiting time is limited
@@ -739,10 +740,10 @@ class TripCluster:
                                   (np.absolute(mat/passenger_time) <= Gamma).astype(np.bool_))
 
     def compute_depart_01_matrix_post(
-            self,
-            Delta2: float = 10,
-            Gamma: float = 0.2,
-            default_rule: bool = True,
+        self,
+        Delta2: float = 10,
+        Gamma: float = 0.2,
+        default_rule: bool = True,
     ):
         """
         After tt_matrix_p1 is computed, filter by maximum waiting time for the driver at pickup location
@@ -775,11 +776,11 @@ class TripCluster:
                               (np.absolute(wait_time_mat/passenger_time) <= Gamma)).astype(np.bool_)
 
     def compute_pickup_01_matrix(
-            self,
-            threshold_dist: float = 5280 * 5,
-            mu1: float = 1.5,
-            mu2: float = 0.1,
-            use_mu2: bool = True,
+        self,
+        threshold_dist: float = 5280 * 5,
+        mu1: float = 1.5,
+        mu2: float = 0.1,
+        use_mu2: bool = True,
     ):
         """
         Compute feasibility matrix based on whether one can pick up/ drop off passengers.
@@ -855,11 +856,11 @@ class TripCluster:
                               (backward_index <= mu2)).astype(bool)
 
     def compute_reroute_01_matrix_pnr(
-            self,
-            delta: float = 15,
-            gamma: float = 1.5,
-            ita_pnr: float = 0.5,
-            print_mat: bool = True
+        self,
+        delta: float = 15,
+        gamma: float = 1.5,
+        ita_pnr: float = 0.5,
+        print_mat: bool = True
     ):
         """
         Compute carpool-able matrix considering total reroute time (non-shared trip segments)
@@ -908,10 +909,10 @@ class TripCluster:
         self.ml_pnr_matrix[self.cp_pnr_matrix == 0] = np.nan
 
     def compute_reroute_01_matrix(
-            self,
-            delta: float = 15,
-            gamma: float = 1.5,
-            ita: float = 0.5,
+        self,
+        delta: float = 15,
+        gamma: float = 1.5,
+        ita: float = 0.5,
     ) -> None:
         """
         Compute carpool-able matrix considering total reroute time (non-shared trip segments)
@@ -1069,10 +1070,10 @@ class TripCluster:
         self.result_lst = [p for p in tps if x[p].x > 0.5]
 
     def evaluate_individual_trips_both(
-            self,
-            verbose: bool = False,
-            use_bipartite: bool = False,
-            trips: pd.DataFrame | None = None,
+        self,
+        verbose: bool = False,
+        use_bipartite: bool = False,
+        trips: pd.DataFrame | None = None,
     ):
         """
         After getting optimized results, expand the trip column with before after information for each person.
@@ -1162,9 +1163,9 @@ class TripCluster:
         return self.trip_summary_df
 
     def evaluate_individual_trips(
-            self,
-            verbose: bool = False,
-            use_bipartite: bool = False
+        self,
+        verbose: bool = False,
+        use_bipartite: bool = False
     ) -> pd.DataFrame:
         """
         After getting optimized results, expand the trip column with before after information for each person.
@@ -1244,9 +1245,9 @@ class TripCluster:
         return self.trip_summary_df
 
     def evaluate_trips(
-            self,
-            verbose: bool = False,
-            use_bipartite: bool = False
+        self,
+        verbose: bool = False,
+        use_bipartite: bool = False
     ):
         """
         Evaluate the assignment's performances. Interested in:
@@ -1321,10 +1322,10 @@ class TripCluster:
         return tot_count, num_paired, ori_tt, new_tt, ori_ml, new_ml, sid
 
     def plot_single_trip(
-            self,
-            intind1: str, intind2: str,
-            network_df: pd.DataFrame | None = None,
-            fixed_role: bool = False,
+        self,
+        intind1: str, intind2: str,
+        network_df: pd.DataFrame | None = None,
+        fixed_role: bool = False,
     ):
         """
         Plot carpool trip for a single trip corresponding to the matrix position (ind 1, ind 2)
@@ -1421,10 +1422,10 @@ class TripCluster:
         return fig1, fig2
 
     def plot_single_trip_pnr(
-            self, intind1: int, intind2: int,
-            trips: pd.DataFrame | None = None,
-            network_df: pd.DataFrame | None = None,
-            fixed_role: bool = False,
+        self, intind1: int, intind2: int,
+        trips: pd.DataFrame | None = None,
+        network_df: pd.DataFrame | None = None,
+        fixed_role: bool = False,
     ):
         idx1, idx2 = self.int2idx[intind1], self.int2idx[intind2]
         if trips is None:
@@ -1618,10 +1619,10 @@ class TripCluster:
             print(self.choice_matrix[:8, :8])
 
     def compute_in_one_step_pnr(
-            self, mu1: float = 1.3, mu2: float = 0.1, dst_max: float = 5 * 5280,
-            Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
-            delta: float = 15, gamma: float =1.5, ita: float = 0.8, ita_pnr: float = 0.5,
-            include_direct: bool = True, print_mat: bool = True,
+        self, mu1: float = 1.3, mu2: float = 0.1, dst_max: float = 5 * 5280,
+        Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
+        delta: float = 15, gamma: float =1.5, ita: float = 0.8, ita_pnr: float = 0.5,
+        include_direct: bool = True, print_mat: bool = True,
     ):
         """
         For the park and ride case, use the same set of filtering parameters for normal case (6 steps).
@@ -1717,12 +1718,12 @@ class TripCluster:
             print(self.choice_matrix[:8, :8])
 
     def optimize_in_one_step(
-            self,
-            rt_bipartite: bool,
-            rt_LP: bool,
-            verbose: bool,
-            plot_all: bool,
-            mode: int,
+        self,
+        rt_bipartite: bool,
+        rt_LP: bool,
+        verbose: bool,
+        plot_all: bool,
+        mode: int,
     ):
         lp_summ, lp_summ_ind, bt_summ, bt_summ_ind = None, None, None, None
         if rt_LP:
@@ -1799,9 +1800,9 @@ class TripCluster:
         return lp_summ, lp_summ_ind, bt_summ, bt_summ_ind
 
     def _save_travel_path(
-            self,
-            travel_paths: str,
-            folder_name: str,
+        self,
+        travel_paths: str,
+        folder_name: str,
     ) -> None:
         travel_paths = pd.DataFrame(
             travel_paths,
@@ -1815,11 +1816,11 @@ class TripCluster:
             )
 
     def compute_in_one_step(
-            self,  print_mat: bool = False,
-            mu1: float = 1.5, mu2: float = 0.1, dst_max: float = 5 * 5280,
-            Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
-            delta: float = 15, gamma: float = 1.5, ita: float = 0.5,
-            skip_combine: bool = False
+        self,  print_mat: bool = False,
+        mu1: float = 1.5, mu2: float = 0.1, dst_max: float = 5 * 5280,
+        Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
+        delta: float = 15, gamma: float = 1.5, ita: float = 0.5,
+        skip_combine: bool = False
     ):
         # step 1. check departure time difference to filter
         self.compute_depart_01_matrix_pre(Delta1=Delta1)
