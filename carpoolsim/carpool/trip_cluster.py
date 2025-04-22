@@ -17,7 +17,12 @@ import contextily as cx
 
 import carpoolsim.carpool_solver.bipartite_solver as tg
 from carpoolsim.visualization.carpool_viz_seq import plot_seq
-from carpoolsim.database.query_database import query_od_info
+from carpoolsim.carpool.util.network_search import (
+    query_od_info, 
+    get_path_distance_and_tt, 
+    dynamic_shortest_path_search,
+    naive_shortest_path_search
+)
 import carpoolsim.carpool.trip_filters as filts
 
 plt.rcParams.update({'font.size': 22})
@@ -113,31 +118,6 @@ class TripCluster:
         self.result_lst_bipartite = None  # store optimized results of bipartite method
         self.trip_summary_df = None  # a DataFrame stores before after numbers for summarized statistics for the cluster
 
-    # connect to database and quickly check OD shortest path
-    def query_od_info(self, o_taz: str | int, d_taz: str | int):
-        """
-        # returned: origin ID, destination ID, distance, path used
-        :param o_taz: origin TAZ
-        :param d_taz: destination TAZ
-        :return:
-        """
-        results = query_od_info(engine=self.engine, o_taz=o_taz, d_taz=d_taz)
-        row_dist = results[2]
-        row_path = results[3]
-        return str(o_taz), str(d_taz), row_dist, row_path
-
-    def get_path_distance_and_tt(self, nodes: list[str]):
-        """
-        A helper function to get driving path given a set of network nodes.
-        :param nodes: a list of traveling network node id
-        :return: travel time and mileage distance of the path
-        """
-        tt, dst = 0, 0
-        for i in range(len(nodes) - 1):
-            tt += self.network[nodes[i]][nodes[i + 1]]['forward']
-            dst += self.network[nodes[i]][nodes[i + 1]]['dist']
-        return tt, dst
-
     def compute_diagonal(self):
         """
         Compute drive alone (SOV) trips for all travel demands in the cluster,
@@ -157,6 +137,7 @@ class TripCluster:
         nrow, ncol = self.nrow, self.ncol
         item_size = max(nrow, ncol)
         trips = self.trips.iloc[:item_size, :]
+        network = self.network
 
         integer_idx = 0  # use integer index for SOV trips
         tt_lst, dst_lst = [], []
@@ -165,8 +146,9 @@ class TripCluster:
             start_node, end_node = trip['o_node'], trip['d_node']
             start_taz, end_taz = trip['orig_taz'], trip['dest_taz']
             # step 2-4. for diagonal, use slower but more accurate distance searcher
-            # pth_nodes, tt, dst = self._dynamic_shortest_path_search(start_node, end_node, start_taz, end_taz)
-            pth_nodes, tt, dst = self._naive_shortest_path_search(start_node, end_node)
+            # pth_nodes, tt, dst = dynamic_shortest_path_search(
+            #  network, start_node, end_node, start_taz, end_taz)
+            pth_nodes, tt, dst = naive_shortest_path_search(network, start_node, end_node)
             # store solo paths information
             self.soloPaths[integer_idx] = pth_nodes
             # step 5. store solo travel results
@@ -185,29 +167,6 @@ class TripCluster:
             # update tt matrix and ml matrix
             np.fill_diagonal(self.tt_pnr_matrix, tt_lst)
             np.fill_diagonal(self.ml_pnr_matrix, dst_lst)
-
-    def _dynamic_shortest_path_search(self, start_node, end_node, start_taz, end_taz):
-        # step 1. get OD and query the shortest path between OD TAZ centroids.
-        __, __, row_dist, nodes = self.query_od_info(start_taz, end_taz)
-        # step 2. store graph distances, reset them to zeros for fast compute
-        orig_distances = []
-        for i in range(len(nodes) - 1):
-            orig_distances.append(self.network[nodes[i]][nodes[i + 1]]['forward'])
-            self.network[nodes[i]][nodes[i + 1]]['forward'] = 0.0001
-        # step 3.1 Run dijkstra's algorithm to recompute the shortest paths
-        __, pth_nodes = nx.single_source_dijkstra(self.network, str(start_node), str(end_node), weight='forward')
-        # step 3.2 Restore all graph weights
-        for i, d in enumerate(orig_distances):
-            self.network[nodes[i]][nodes[i + 1]]['forward'] = d
-        # step 4. Compute travel distance of the new path
-        tt, dst = self.get_path_distance_and_tt(pth_nodes)
-        return pth_nodes, tt, dst
-
-    def _naive_shortest_path_search(self, start_node, end_node):
-        # step 1. get OD and query the shortest path between OD TAZ centroids.
-        __, pth_nodes = nx.single_source_dijkstra(self.network, str(start_node), str(end_node), weight='forward')
-        tt, dst = self.get_path_distance_and_tt(pth_nodes)
-        return pth_nodes, tt, dst
 
     def generate_pnr_trip_map_filt(
         self,
@@ -262,13 +221,14 @@ class TripCluster:
         # load dataframe series
         trip_row = self.trips.iloc[trip_id, :]
         pnr_row = self.parking_lots.iloc[station_id, :]
+        network = self.network
 
         def calculateAccess(trip, pnr):
             O1, O1_taz = trip['o_node'], trip['orig_taz']
             O2, O2_taz = pnr['node'], pnr['taz']
             D1, D1_taz = trip['d_node'], trip['dest_taz']
-            p1, t1, d1 = self._dynamic_shortest_path_search(O1, O2, O1_taz, O2_taz)
-            p2, t2, d2 = self._dynamic_shortest_path_search(O2, D1, O2_taz, D1_taz)
+            p1, t1, d1 = dynamic_shortest_path_search(network, O1, O2, O1_taz, O2_taz)
+            p2, t2, d2 = dynamic_shortest_path_search(network, O2, D1, O2_taz, D1_taz)
             # return access info, and travel time goes through PNR station
             return p1, t1, d1, t1+t2
         # return travel time, distance, and network nodes
@@ -448,20 +408,21 @@ class TripCluster:
             :param t2_idx: the index of trip 2
             :param reversed: if False, trip1 is the driver. Otherwise, trip2 is the driver.
             """
+            network = self.network
             O1, D1, O2, D2 = trip1['o_node'], trip1['d_node'], trip2['o_node'], trip2['d_node']
             O1_taz, D1_taz, O2_taz, D2_taz = trip1['orig_taz'], trip1['dest_taz'], trip2['orig_taz'], trip2['dest_taz']
             if not reversed:  # O1 ==> O2 ==> D2 ==> D1
-                p1, t1, d1 = self._dynamic_shortest_path_search(O1, O2, O1_taz, O2_taz)  # O1->O2
+                p1, t1, d1 = dynamic_shortest_path_search(network, O1, O2, O1_taz, O2_taz)  # O1->O2
                 # O2->D2, which is already computed (self.compute_diagonal should be called before)
                 d2, p2 = self.soloDists[t2_idx], self.soloPaths[t2_idx]
-                t2, __ = self.get_path_distance_and_tt(p2)
-                p3, t3, d3 = self._dynamic_shortest_path_search(D2, D1, D2_taz, D1_taz)  # D2->D1
+                t2, __ = get_path_distance_and_tt(network, p2)
+                p3, t3, d3 = dynamic_shortest_path_search(network, D2, D1, D2_taz, D1_taz)  # D2->D1
             else:  # O2 ==> O1 ==> D1 ==> D2
-                p1, t1, d1 = self._dynamic_shortest_path_search(O2, O1, O2_taz, O1_taz)  # O2->O1
+                p1, t1, d1 = dynamic_shortest_path_search(network, O2, O1, O2_taz, O1_taz)  # O2->O1
                 # O1->D1, which is already computed (self.compute_diagonal should be called before)
                 d2, p2 = self.soloDists[t1_idx], self.soloPaths[t1_idx]
-                t2, __ = self.get_path_distance_and_tt(p2)
-                p3, t3, d3 = self._dynamic_shortest_path_search(D1, D2, D1_taz, D2_taz)  # D1->D2
+                t2, __ = get_path_distance_and_tt(network, p2)
+                p3, t3, d3 = dynamic_shortest_path_search(network, D1, D2, D1_taz, D2_taz)  # D1->D2
             if print_dist:
                 print('d1: {}; d2: {}; d3: {}'.format(d1, d2, d3))
             return t1, t2, t3, d1, d2, d3, p1, p2, p3
@@ -531,6 +492,7 @@ class TripCluster:
             :param reversed:
             :return: if False, trip1 is the driver. Otherwise, trip2 is the driver.
             """
+            network = self.network
             O1, D1, O2, D2 = trip1['o_node'], trip1['d_node'], trip2['o_node'], trip2['d_node']
             O1_taz, D1_taz, O2_taz, D2_taz = trip1['orig_taz'], trip1['dest_taz'], trip2['orig_taz'], trip2['dest_taz']
             pnr_row = self.parking_lots.iloc[station_id, :]
@@ -539,13 +501,13 @@ class TripCluster:
             if not reversed:  # O1 ==> M1 ==> D2 ==> D1
                 p0, t0, d0, t_all0 = self.pnr_access_info[int_idx2, station_id]  # O2 ==> M1
                 p1, t1, d1, t_all1 = self.pnr_access_info[int_idx1, station_id]  # O1 ==> M1
-                p2, t2, d2 = self._dynamic_shortest_path_search(M1, D2, M_taz, D2_taz)  # M1 ==> D2
-                p3, t3, d3 = self._dynamic_shortest_path_search(D2, D1, D2_taz, D1_taz)  # D2 ==> D1
+                p2, t2, d2 = dynamic_shortest_path_search(network, M1, D2, M_taz, D2_taz)  # M1 ==> D2
+                p3, t3, d3 = dynamic_shortest_path_search(network, D2, D1, D2_taz, D1_taz)  # D2 ==> D1
             else:  # O2 ==> M1 ==> D1 == D2
                 p0, t0, d0, t_all0 = self.pnr_access_info[int_idx1, station_id]  # O1 ==> M1
                 p1, t1, d1, t_all1 = self.pnr_access_info[int_idx2, station_id]  # O2 ==> M1
-                p2, t2, d2 = self._dynamic_shortest_path_search(M1, D1, M_taz, D1_taz)  # M1 ==> D1
-                p3, t3, d3 = self._dynamic_shortest_path_search(D1, D2, D2_taz, D2_taz)  # D1 ==> D2
+                p2, t2, d2 = dynamic_shortest_path_search(network, M1, D1, M_taz, D1_taz)  # M1 ==> D1
+                p3, t3, d3 = dynamic_shortest_path_search(network, D1, D2, D2_taz, D2_taz)  # D1 ==> D2
             if print_dist:
                 print(' d1: {}; d2: {}; d3: {}'.format(d1, d2, d3))
             return t0, t1, t2, t3, d0, d1, d2, d3, p0, p1, p2, p3
