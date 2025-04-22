@@ -52,4 +52,3 @@ CRS = "EPSG:2240"  # this is for Georgia West
 NUM_PROCESSES = 12  # number of multiprocess for parallel computing
 
 DB_URL = f"sqlite:///{os.path.join(os.environ['data_inputs'], 'path_retention1.db')}"
-

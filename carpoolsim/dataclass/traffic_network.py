@@ -66,4 +66,3 @@ class TrafficAnalysisZone:
             "group_id": self.group_id,
             "geometry": self.geometry,
         }
-

@@ -47,8 +47,8 @@ def sql_engine_factory(db_url: str) -> sqlalchemy.Engine:
 
 
 def batch_store_df(
-        db1: dict,
-        engine: sqlalchemy.Engine
+    db1: dict,
+    engine: sqlalchemy.Engine
 ) -> None:
     dists_df = pd.DataFrame(
         convert_dict_to_row(db1['dist']),
@@ -78,7 +78,7 @@ def batch_store_df(
 
 
 def convert_dict_to_row(dt, last_column_type: None | str = None):
-    dt_lst = list()
+    dt_lst = []
     if last_column_type is None:
         for dt_key in dt:
             orig_taz = dt_key
