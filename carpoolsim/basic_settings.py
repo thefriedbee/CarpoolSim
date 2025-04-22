@@ -33,12 +33,12 @@ os.environ['network_links'] = os.path.join(
 
 os.environ['taz'] = os.path.join(
     os.environ['data_inputs'],
-    'ABM2020 203K', 'taz', 'TAZ_combine.shp'
+    'ABM2020 203K', 'taz', 'taz.shp'
 )
 
 os.environ['parking_lots'] = os.path.join(
-    os.environ['data_inputs'], 'Park_and_Ride_locations',
-    'Park_and_Ride_locations.shp'
+    os.environ['data_inputs'], 'ABM2020 203K', '2020 PNR nodes',
+    '2020 pnr nodes.shp'
 )
 
 os.environ['trip_demands'] = os.path.join(
@@ -51,5 +51,5 @@ os.environ['trip_demands'] = os.path.join(
 CRS = "EPSG:2240"  # this is for Georgia West
 NUM_PROCESSES = 12  # number of multiprocess for parallel computing
 
-DB_URL = f"sqlite:///{os.path.join(os.environ['data_inputs'], "path_retention1.db")}"
+DB_URL = f"sqlite:///{os.path.join(os.environ['data_inputs'], 'path_retention1.db')}"
 
