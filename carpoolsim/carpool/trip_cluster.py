@@ -779,7 +779,7 @@ class TripCluster:
 
         # 1. coordinate distance; 2. coordinate distance ratio
         self.cp_matrix = (self.cp_matrix &
-                          (man_o <= threshold_dist) &
+                          (mat_o <= threshold_dist) &
                           (mat_ratio < mu1)).astype(bool)
 
         if use_mu2:
@@ -1571,16 +1571,24 @@ class TripCluster:
         :return:
         """
         # step 0. compute diagonal
-        self.compute_diagonal()
+        soloPaths, soloTimes, soloDists, tt_lst, dst_lst = self.compute_diagonal()
+        self.soloPaths = soloPaths
+        self.soloTimes = soloTimes
+        self.soloDists = soloDists
+        self.fill_diagonal(tt_lst, dst_lst)
         if include_direct:
-            self.compute_in_one_step(print_mat=False, skip_combine=True,  # combine modes later
-                                     mu1=mu1, mu2=mu2, dst_max=dst_max,
-                                     Delta1=Delta1, Delta2=Delta2, Gamma=Gamma,  # for depart diff and wait time
-                                     delta=delta, gamma=gamma, ita=ita)
+            self.compute_in_one_step(
+                print_mat=False, skip_combine=True,  # combine modes later
+                mu1=mu1, mu2=mu2, dst_max=dst_max,
+                Delta1=Delta1, Delta2=Delta2, Gamma=Gamma,  # for depart diff and wait time
+                delta=delta, gamma=gamma, ita=ita
+            )
         # step 1. a set of filter based on euclidean distance between coordinates
         # (driver to station)
-        self.compute_01_matrix_to_station_p1(threshold_dist=dst_max, mu1=mu1, mu2=mu2,
-                                             trips=self.trips, use_mu2=True, print_mat=print_mat)
+        self.compute_01_matrix_to_station_p1(
+            threshold_dist=dst_max, mu1=mu1, mu2=mu2,
+            trips=self.trips, use_mu2=True, print_mat=print_mat
+        )
         if print_mat:
             # print("ml matrix (after PNR pre scan)")
             # print(self.ml_matrix[:10, :10])
@@ -1622,8 +1630,10 @@ class TripCluster:
             print(self.tt_pnr_matrix[:8, :8])
             pass
         # step 6. filter by real computed waiting time (instead of coordinates before)
-        self.compute_reroute_01_matrix_pnr(delta=delta, gamma=gamma, ita_pnr=ita_pnr,
-                                           print_mat=print_mat)
+        self.compute_reroute_01_matrix_pnr(
+            delta=delta, gamma=gamma, ita_pnr=ita_pnr,
+            print_mat=print_mat
+        )
         if print_mat:
             print("cp_pnr_matrix (after step 6):", self.cp_pnr_matrix.sum())
             print(self.cp_pnr_matrix[:8, :8])
