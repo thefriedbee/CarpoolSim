@@ -18,12 +18,15 @@ import contextily as cx
 import carpoolsim.carpool_solver.bipartite_solver as tg
 from carpoolsim.visualization.carpool_viz_seq import plot_seq
 from carpoolsim.carpool.util.network_search import (
-    query_od_info, 
     get_path_distance_and_tt, 
     dynamic_shortest_path_search,
     naive_shortest_path_search
 )
-import carpoolsim.carpool.trip_filters as filts
+from carpoolsim.carpool.util.trip_filters import (
+    get_trip_projected_ods,
+    get_distances_among_coordinates,
+    get_pnr_xys
+)
 
 plt.rcParams.update({'font.size': 22})
 np.set_printoptions(precision=3)
@@ -71,7 +74,6 @@ class TripCluster:
         # for simulation with time, this will also update as needed
         self.int2idx = {i: index for i, (index, row) in enumerate(df.iterrows())}
         self.idx2int = {index: i for i, (index, row) in enumerate(df.iterrows())}
-        count = len(df)
         # this should be different for inherited class
         self.nrow, self.ncol = count, count
         self.network = network  # directed network
@@ -233,9 +235,6 @@ class TripCluster:
             return p1, t1, d1, t1+t2
         # return travel time, distance, and network nodes
         p1, t1, d1, t_all = calculateAccess(trip_row, pnr_row)
-        # print("strange...")
-        # print(trip_id, station_id)
-        # print(p1, t1, d1, t_all)
         self.pnr_access_info[trip_id, station_id] = [p1, t1, d1, t_all]
 
     def _check_trips_best_pnr(self, trip_row1, trip_row2, int_idx1, int_idx2):
@@ -317,37 +316,27 @@ class TripCluster:
         mat_od_x = dxs - oxs
         mat_od_y = dys - oys
 
-        man_od = np.sqrt(mat_od_x ** 2 + mat_od_y ** 2).astype("float32")
-        man_om = np.sqrt(mat_om_x ** 2 + mat_om_y ** 2).astype("float32")
-        man_md = np.sqrt(mat_md_x ** 2 + mat_md_y ** 2).astype("float32")
         # compute reroute distance using pnr facility
         post_dist = (man_om + man_md)
         pre_dist = man_od.reshape(-1, 1)
         mat_ratio = (post_dist / pre_dist).astype("float32")
         if print_mat:
-            # print("shapes:", self.pnr_01_matrix.shape, mat_ratio.shape, man_om.shape)
             print("mat_ratio total pass is:", (mat_ratio < mu1).sum())
-            # print(mat_ratio[:8, :8])
             print("man_om total pass is:", (man_om <= threshold_dist).sum())
-            # print(man_om[:8, :8])
-            # row_idx = np.argmax(mat_ratio, axis=1)
             self.pnr_01_matrix = (self.pnr_01_matrix &
                                   (mat_ratio < mu1) &
                                   (man_om <= threshold_dist))
             print("pnr 0-1 matrix total pass is: (after basic euclidean filters)", self.pnr_01_matrix.sum())
-            # print(self.pnr_01_matrix[:8, :8])
         if use_mu2:
             # now it is time for implementing backward constraint
             # compute the vector for all drivers V_{O1D1}
             part1 = -(mat_om_x * mat_md_x) + (mat_om_y * mat_md_y)
             part2 = (mat_om_x * mat_md_x) + (mat_om_y * mat_om_y)
             backward_index = part1 / part2
-            # print(self.pnr_01_matrix.shape)
             self.pnr_01_matrix = (self.pnr_01_matrix &
                                   (backward_index <= mu2)).astype(np.bool_)
             if print_mat:
                 print("pnr 0-1 matrix total pass is (after mu2 filter):", self.pnr_01_matrix.sum())
-                # print(self.pnr_01_matrix[:8, :8])
 
     def compute_01_matrix_to_station_p2(
         self,
@@ -629,16 +618,9 @@ class TripCluster:
         # step 1. Measure depart time difference within threshold time (default is 15 minutes)
         nrow, ncol = self.nrow, self.ncol
         depart_lst = np.array(self.trips['new_min'].tolist()).reshape((1, -1))  # depart minute
-        # print('depart list: ', depart_lst)
         # compare departure time difference
         mat = np.tile(depart_lst.transpose(), (1, ncol))
         mat = np.tile(depart_lst, (nrow, 1)) - mat  # depart time difference (driver's depart - pax depart)
-        # print('tt matrix')
-        # print(self.tt_matrix[0:20, 0:20])
-        # print('tt matrix part 1')
-        # print(self.tt_matrix_p1[0:20, 0:20])
-        # print('depart time different matrix')
-        # print(mat[0:20, 0:20])
         if default_rule:
             # condition 1. passenger should arrive earlier than the driver, plus
             # condition 2. only the driver start no later than Delta1 minutes after passenger leaves
@@ -789,8 +771,6 @@ class TripCluster:
         ori = np.tile(mat_diag, (nrow, 1))
         mat_ratio = rr / ori
 
-        # print('mat_orig', mat_ratio.shape)
-        # print(mat_ratio[:5, :5])
         # 1. coordinate distance; 2. coordinate distance ratio
         self.cp_matrix = (self.cp_matrix &
                           (man_o <= threshold_dist) &
@@ -895,11 +875,6 @@ class TripCluster:
         # condition 3: rider should at least share 50% of the total travel time
         passenger_time = np.tile(drive_alone_tt.reshape(1, -1), (nrow, 1))
         cp_time_similarity = ((passenger_time / self.tt_matrix) >= ita).astype(np.bool_)
-        # print('reroute time matrix...')
-        # # print((self.tt_matrix - np.tile(drive_alone_tt, (1, ncol)))[:20, :20])
-        # print(cp_reroute_matrix[:20, :20])
-        # print('reroute ratio matrix...')
-        # print(cp_reroute_ratio_matrix[:20, :20])
         # condition 4: after drop-off time / whole travel time?
         # self.cp_reroute_matrix = cp_reroute_matrix # TODO: delete this row when not needed
         self.cp_matrix = (self.cp_matrix &
@@ -1268,10 +1243,6 @@ class TripCluster:
                 new_tt += self.tt_pnr_matrix[p]
                 new_ml += self.ml_pnr_matrix[p]  # + self.ml_pnr_matrix_p[p]
         if verbose:
-            # if use_bipartite:
-            #     print("*****Use bipartite method*****")
-            # else:
-            #     print("*****Use LP method*****")
             print("{} persons found carpooling in a cluster with {} persons".format(num_paired, tot_count))
             print_str = "Original total vehicular travel time is {} veh-min;\n"
             print_str += "New total vehicular travel time is {} veh-min "
@@ -1648,19 +1619,11 @@ class TripCluster:
         self.compute_reroute_01_matrix_pnr(delta=delta, gamma=gamma, ita_pnr=ita_pnr,
                                            print_mat=print_mat)
         if print_mat:
-            # print("ml matrix (after step 6)")
-            # print(self.ml_matrix[:10, :10])
             print("cp_pnr_matrix (after step 6):", self.cp_pnr_matrix.sum())
             print(self.cp_pnr_matrix[:8, :8])
         # step 7. combine direct carpool and park and ride carpool
         self.combine_pnr_carpool(include_direct, print_mat=print_mat)
         if print_mat:
-            # print("ml matrix (after step 7)")
-            # print(self.ml_matrix[:10, :10])
-            # print("combined carpool matrix:")
-            # print(self.cp_matrix_all)
-            # print("cppnr matrix (after step 7)")
-            # print(self.cp_pnr_matrix[:10, :10])
             print("cp matrix (after step 7):", self.cp_matrix.sum())
             print(self.cp_matrix[:8, :8])
             print("combined matrix (after step 7):", self.cp_matrix_all.sum())
@@ -1811,12 +1774,6 @@ class TripCluster:
             # step 7. just copy matrix value to "combined modes" matrices (for a uniformed computational framework)
             self.combine_simple_carpool(print_mat=print_mat)
         if print_mat:
-            # print("ml matrix (after step 7)")
-            # print(self.ml_matrix[:10, :10])
-            # print("combined carpool matrix:")
-            # print(self.cp_matrix_all)
-            # print("cppnr matrix (after step 7)")
-            # print(self.cp_pnr_matrix[:10, :10])
             print("cp matrix (after step 7):", self.cp_matrix.sum())
             print(self.cp_matrix[:8, :8])
             print("combined matrix (after step 7):", self.cp_matrix_all.sum())
