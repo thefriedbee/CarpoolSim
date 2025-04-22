@@ -2,20 +2,20 @@
 Define the standard schema of network links file
 """
 from pydantic.dataclasses import dataclass
-from pydantic import Field
+from pydantic import Field, ConfigDict, field_validator
 from shapely import Point, LineString, Polygon
 
 
-@dataclass
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class TrafficNetworkLink:
     a: int = Field(description="link's starting node id")
     b: int = Field(description="link's ending node id")
     a_b: str = Field(description="links id (defined by node_a and node_b)")
     name: str = Field(description="name of the road link")
     distance: float = Field(ge=0, description="The travel distance along the link")
-    factype: str = Field(description="type of the road (e.g., highway, etc.)")
-    speed_limit: float = Field(ge=0, le=100, description="The speed limit of the road (in mph)")
-    geometry: LineString = Field(description="geometry of the link (for visualization purpose)")
+    factype: int = Field(description="type of the road (e.g., highway, etc.)")
+    speed_limit: float = Field(ge=0, le=300, description="The speed limit of the road (in mph)")
+    geometry: LineString = Field(description="The geometry of the link")
 
     def convert_to_dict(self) -> dict:
         return {
@@ -29,8 +29,12 @@ class TrafficNetworkLink:
             "geometry": self.geometry
         }
 
+    @field_validator("a_b")
+    def convert_name_to_str(cls, v) -> str:
+        return str(v)
 
-@dataclass
+
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class TrafficNetworkNode:
     nid: int = Field(description="The traffic network node id")
     lon: float = Field(ge=-180, le=180, description="The longitude of the node")
@@ -50,7 +54,7 @@ class TrafficNetworkNode:
         }
 
 
-@dataclass
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class TrafficAnalysisZone:
     taz_id: int = Field(description="The traffic analysis zone id")
     group_id: str = Field(description="group TAZ into contingent groups")

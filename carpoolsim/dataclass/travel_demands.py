@@ -3,13 +3,13 @@ Define the trip demands
 """
 import datetime
 from pydantic.dataclasses import dataclass
-from pydantic import Field
+from pydantic import Field, ConfigDict
 
 import pandas as pd
 from shapely import Point
 
 
-@dataclass
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class TripDemand:
     trip_id: int = Field(description="The trip id")
     # spatial information
@@ -19,7 +19,7 @@ class TripDemand:
     dest_lon: float = Field(ge=-180, le=180, description="The longitude of the destination")
     dest_lat: float = Field(ge=-90, le=90, description="The latitude of the destination")
     # temporal information (the minute of the day)
-    new_min: float = Field(ge=0, le=1440, description="The minute of the day")
+    new_min: float = Field(ge=0, le=1440, description="The minute of the day")   
     geometry: Point = Field(description="The geometry of the trip demand")
 
     def convert_to_list(self) -> list:
