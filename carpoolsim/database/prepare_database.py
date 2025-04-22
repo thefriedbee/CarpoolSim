@@ -42,7 +42,7 @@ def sql_engine_factory(db_url: str) -> sqlalchemy.Engine:
 
     # test whether database can be connected
     with engine.connect() as connection:
-        print("engine successfully connectedd to the database")
+        print("engine successfully connected to the database")
     return engine
 
 
