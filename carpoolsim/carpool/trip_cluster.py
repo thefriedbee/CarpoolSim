@@ -75,6 +75,7 @@ class TripCluster:
         self.int2idx = {i: index for i, (index, row) in enumerate(df.iterrows())}
         self.idx2int = {index: i for i, (index, row) in enumerate(df.iterrows())}
         # this should be different for inherited class
+        count = len(df)
         self.nrow, self.ncol = count, count
         self.network = network  # directed network
         self.links = links.to_crs(epsg=3857)
@@ -141,6 +142,8 @@ class TripCluster:
         trips = self.trips.iloc[:item_size, :]
         network = self.network
 
+        # values to write
+        soloPaths, soloTimes, soloDists = {}, {}, {}
         integer_idx = 0  # use integer index for SOV trips
         tt_lst, dst_lst = [], []
         for idx, trip in trips.iterrows():
@@ -152,13 +155,16 @@ class TripCluster:
             #  network, start_node, end_node, start_taz, end_taz)
             pth_nodes, tt, dst = naive_shortest_path_search(network, start_node, end_node)
             # store solo paths information
-            self.soloPaths[integer_idx] = pth_nodes
+            soloPaths[integer_idx] = pth_nodes
             # step 5. store solo travel results
-            self.soloTimes[integer_idx] = tt
-            self.soloDists[integer_idx] = dst
+            soloTimes[integer_idx] = tt
+            soloDists[integer_idx] = dst
             tt_lst.append(tt)
             dst_lst.append(dst)
             integer_idx += 1
+        return soloPaths, soloTimes, soloDists, tt_lst, dst_lst
+        
+    def fill_diagonal(self, tt_lst, dst_lst):
         # update diagonal cp matrix
         np.fill_diagonal(self.cp_matrix, 1)
         # update tt matrix and ml matrix
