@@ -8,7 +8,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import networkx as nx
-from gurobipy import Model, GRB, quicksum
 import sqlalchemy
 
 import carpoolsim.carpool_solver.bipartite_solver as tg
@@ -35,6 +34,14 @@ from carpoolsim.carpool.util.evaluator import (
     evaluate_individual_trips_both
 )
 from carpoolsim.carpool.util.solver import compute_optimal_lp
+from carpoolsim.carpool.util.filters_dc import (
+    compute_depart_01_matrix_pre,
+    compute_reroute_01_matrix
+)
+from carpoolsim.carpool.util.filters_pnr import (
+    compute_depart_01_matrix_pre_pnr,
+    compute_reroute_01_matrix_pnr
+)
 
 np.set_printoptions(precision=3)
 
@@ -262,14 +269,11 @@ class TripCluster:
         # nrow: num of drivers; ncol: num of passengers
         num_driver, num_all, lots_ncol = self.nrow, self.ncol, self.pnr_ncol
         # print(f"nrow: {nrow}; nrol: {ncol}; lots_ncol: {lots_ncol}")
-        oxs = np.array(trips.ox.tolist()).reshape((1, -1))
-        oys = np.array(trips.oy.tolist()).reshape((1, -1))
-        dxs = np.array(trips.dx.tolist()).reshape((1, -1))
-        dys = np.array(trips.dy.tolist()).reshape((1, -1))
+        oxs, oys, dxs, dys = get_trip_projected_ods(trips)
+        # positions of the parking lots
+        mxs, mys = get_pnr_xys(self.parking_lots)
 
-        mxs = np.array(self.parking_lots.x.tolist()).reshape((1, -1))
-        mys = np.array(self.parking_lots.y.tolist()).reshape((1, -1))
-
+        # TODO: check the correctness of the following logic
         # origin distance in (x, y) axis between trip origin and parking lots (vectorized)
         mat_om_x = np.tile(oxs.transpose(), (1, lots_ncol))
         mat_om_x = np.abs(mat_om_x - np.tile(mxs, (num_all, 1)))
@@ -320,7 +324,7 @@ class TripCluster:
         # just compute travel information through PNR for all trips
         # meanwhile, for each trip, filter by delta and gamma condition
         # update matrix self.pnr_access_info
-        self.generate_pnr_trip_map_filt(delta=delta, gamma=gamma)
+        generate_pnr_trip_map_filt(trip_cluster=self, delta=delta, gamma=gamma)
 
     def compute_carpool(
         self,
@@ -527,79 +531,6 @@ class TripCluster:
                     ' Time spend is {} seconds'
         print(print_str.format(max(nrow, ncol), time.time() - t0))
 
-    def compute_depart_01_matrix_pre_pnr(
-        self,
-        Delta1: float = 15,
-        default_rule: bool = False,
-    ):
-        """
-        For park and ride, the requirements are:
-            1. both travelers can choose to use one parking facilities
-            2. the arrival time at the station is within the time Delta1
-        Use the most relaxed requirement for this, that is:
-            (1) The two trip process don't overlap at all (for drive alone case)!!!
-
-        Required: must run self.compute_pnr_access function to compute access time to station
-        The code could be slow as many operations are not vectorized
-        TODO: optimized by cutting into smaller matrices, one matrix for each station
-
-        Two trips are carpool-able through PNR station if:
-            (Absolute difference rule: The time difference between two departures are within a fixed time threshold)
-            (Alternative rule: Driver departs before rider but no earlier than the given threshold.)
-        :param Delta1: depart time different within Delta1 minutes
-        :param default_rule: if True, strict time different; if False, absolute time difference
-        :return:
-        """
-        trips = self.trips
-        nrow, ncol = self.nrow, self.ncol
-        # simple method
-        depart_lst = np.array(trips['new_min'].tolist()).reshape((1, -1))  # depart minute
-        mat = np.tile(depart_lst.transpose(), (1, ncol))
-        mat = np.tile(depart_lst, (nrow, 1)) - mat  # depart time difference (driver's depart - pax depart)
-        if default_rule:
-            # criterion 1. driver should leave earlier than the passenger, but not earlier than 15 minutes
-            # criterion 2. driver should wait at most 5 minutes
-            self.cp_pnr_matrix = (self.cp_pnr_matrix &
-                                  (mat >= 0) &
-                                  (np.absolute(mat) <= Delta1)).astype(np.bool_)
-        else:
-            # criterion 1. passenger/driver depart time within +/- 15 minutes
-            # criterion 2. passenger/driver wait time +/- 5 minutes
-            self.cp_pnr_matrix = (self.cp_pnr_matrix &
-                                  (np.absolute(mat) <= Delta1)).astype(np.bool_)
-
-    def compute_depart_01_matrix_pre(
-        self,
-        Delta1: float = 15,
-        default_rule: bool = True,
-    ):
-        """
-        Required: must run self.compute_diagonal function to compute diagonal travel information?
-        Filter out carpool trips based on time constraint conditions.
-        Two trips are carpool-able if:
-            (Absolute difference rule: The time difference between two departures are within a fixed time threshold)
-            (Alternative rule: Driver departs before rider but no earlier than the given threshold.)
-        :param Delta1: depart time different within Delta1 minutes
-        :param default_rule: if True, strict time different; if False, absolute time difference
-        :return:
-        """
-        # step 1. Measure depart time difference within threshold time (default is 15 minutes)
-        nrow, ncol = self.nrow, self.ncol
-        depart_lst = np.array(self.trips['new_min'].tolist()).reshape((1, -1))  # depart minute
-        # compare departure time difference
-        mat = np.tile(depart_lst.transpose(), (1, ncol))
-        mat = np.tile(depart_lst, (nrow, 1)) - mat  # depart time difference (driver's depart - pax depart)
-        if default_rule:
-            # condition 1. passenger should arrive earlier than the driver, plus
-            # condition 2. only the driver start no later than Delta1 minutes after passenger leaves
-            self.cp_matrix = (self.cp_matrix &
-                              (mat >= 0) &
-                              (np.absolute(mat) <= Delta1)).astype(np.bool_)
-        else:
-            # condition 1. passenger/driver depart time within +/- Delta1 minutes
-            self.cp_matrix = (self.cp_matrix &
-                              (np.absolute(mat) <= Delta1)).astype(np.bool_)
-
     def compute_depart_01_matrix_post_pnr(
         self,
         Delta2: float = 10,
@@ -712,25 +643,9 @@ class TripCluster:
         :return:
         """
         nrow, ncol = self.nrow, self.ncol
-        oxs = np.array(self.trips.ox.tolist()).reshape((1, -1))
-        oys = np.array(self.trips.oy.tolist()).reshape((1, -1))
-        dxs = np.array(self.trips.dx.tolist()).reshape((1, -1))
-        dys = np.array(self.trips.dy.tolist()).reshape((1, -1))
-
-        # origin distance in (x, y) axis between two trips (vectorized)
-        mat_ox = np.tile(oxs.transpose(), (1, ncol))
-        mat_ox = np.abs(mat_ox - np.tile(oxs, (nrow, 1)))
-        mat_oy = np.tile(oys.transpose(), (1, ncol))
-        mat_oy = np.abs(mat_oy - np.tile(oys, (nrow, 1)))
-
-        # destination distance in (x, y) axis between two trips (vectorized)
-        mat_dx = np.tile(dxs.transpose(), (1, ncol))
-        mat_dx = np.abs(mat_dx - np.tile(dxs, (nrow, 1)))
-        mat_dy = np.tile(dys.transpose(), (1, ncol))
-        mat_dy = np.abs(mat_dy - np.tile(dys, (nrow, 1)))
-
-        man_o = np.sqrt(mat_ox ** 2 + mat_oy ** 2)
-        man_d = np.sqrt(mat_dx ** 2 + mat_dy ** 2)
+        oxs, oys, dxs, dys = get_trip_projected_ods(self.trips)
+        mat_ox, mat_oy, man_o = get_distances_among_coordinates(oxs, oys)
+        mat_dx, mat_dy, man_d = get_distances_among_coordinates(dxs, dys)
 
         # compute euclidean travel distance
         mat_diag = np.sqrt((oxs - dxs) ** 2 + (oys - dys) ** 2)
@@ -741,7 +656,7 @@ class TripCluster:
 
         # 1. coordinate distance; 2. coordinate distance ratio
         self.cp_matrix = (self.cp_matrix &
-                          (mat_o <= threshold_dist) &
+                          (man_o <= threshold_dist) &
                           (mat_ratio < mu1)).astype(bool)
 
         if use_mu2:
@@ -763,95 +678,7 @@ class TripCluster:
 
             np.fill_diagonal(backward_index, -1)
             self.cp_matrix = (self.cp_matrix &
-                              (backward_index <= mu2)).astype(bool)
-
-    def compute_reroute_01_matrix_pnr(
-        self,
-        delta: float = 15,
-        gamma: float = 1.5,
-        ita_pnr: float = 0.5,
-        print_mat: bool = True
-    ):
-        """
-        Compute carpool-able matrix considering total reroute time (non-shared trip segments)
-        This cannot be estimated before travel time matrix (self.tt_matrix) is fully computed
-        :param delta: maximum reroute time (in minutes) acceptable for the driver
-        :param gamma: the maximum ratio of extra travel time over driver's original travel time
-        :param ita_pnr: the ratio between passenger's travel time and driver's travel time should be greater than ita
-        :return:
-        """
-        nrow, ncol = self.nrow, self.ncol
-        # propagate drive alone matrix
-        drive_alone_tt = self.tt_matrix.diagonal().reshape(-1, 1)
-        passenger_alone_tt = np.array([self.soloTimes[i] for i in range(self.ncol)]).reshape(1, -1)
-        # condition 1: total reroute time is smaller than threshold minutes
-        cp_reroute_matrix1 = ((self.tt_pnr_matrix - np.tile(drive_alone_tt, (1, ncol)))
-                              <= delta).astype(bool)
-        cp_reroute_matrix2 = ((self.tt_pnr_matrix - np.tile(passenger_alone_tt, (nrow, 1)))
-                              <= delta).astype(bool)
-        cp_reroute_matrix = cp_reroute_matrix1 & cp_reroute_matrix2
-        # condition 2: ratio is smaller than a threshold
-        cp_reroute_ratio_matrix1 = ((self.tt_pnr_matrix / np.tile(drive_alone_tt, (1, ncol)))
-                                    <= gamma).astype(bool)
-        cp_reroute_ratio_matrix2 = ((self.tt_pnr_matrix / np.tile(passenger_alone_tt, (nrow, 1)))
-                                    <= gamma).astype(bool)
-        cp_reroute_ratio_matrix = cp_reroute_ratio_matrix1 & cp_reroute_ratio_matrix2
-        # condition 3: rider should at least share ita_pnr of the total travel time
-        cp_time_similarity = ((self.tt_pnr_matrix_shared[:self.nrow, :self.ncol] / self.tt_pnr_matrix)
-                              >= ita_pnr).astype(bool)
-        # condition 4: after drop-off time / whole travel time?
-        if print_mat:
-            # print("drive alone...")
-            # print(drive_alone_tt[:8, :8])
-            print("PNR path-based filters results:")
-            print("cp_reroute_matrix passed count:", cp_reroute_matrix.sum())
-            # print(cp_reroute_matrix[:8, :8])
-            print("cp_reroute_ratio_matrix passed count:", cp_reroute_ratio_matrix.sum())
-            # print(cp_reroute_ratio_matrix[:8, :8])
-            print("cp_time_similarity passed count:", cp_time_similarity.sum())
-            # print(cp_time_similarity[:8, :8])
-        self.cp_pnr_matrix = (self.cp_pnr_matrix &
-                              cp_reroute_matrix &
-                              cp_reroute_ratio_matrix &
-                              cp_time_similarity).astype(bool)
-        # need to mask tt and ml matrix
-        self.tt_pnr_matrix[self.cp_pnr_matrix == 0] = np.nan
-        self.ml_pnr_matrix[self.cp_pnr_matrix == 0] = np.nan
-
-    def compute_reroute_01_matrix(
-        self,
-        delta: float = 15,
-        gamma: float = 1.5,
-        ita: float = 0.5,
-    ) -> None:
-        """
-        Compute carpool-able matrix considering total reroute time (non-shared trip segments)
-        This cannot be estimated before travel time matrix (self.tt_matrix) is fully computed
-        :param ita: passenger's travel time should be greater than ita (minutes) compared to that of drivers
-        :param delta: maximum reroute time (in minutes) acceptable for the driver
-        :param gamma: the maximum ratio of extra travel time over driver's original travel time
-        :return:
-        """
-        nrow, ncol = self.nrow, self.ncol
-        # propagate drive alone matrix
-        # drive_alone_tt = self.tt_matrix.diagonal().reshape(-1, 1)
-        drive_alone_tt = np.array([self.soloTimes[i] for i in range(self.nrow)]).reshape(-1, 1)
-        # condition 1: total reroute time is smaller than threshold minutes
-        cp_reroute_matrix = ((self.tt_matrix - np.tile(drive_alone_tt, (1, ncol))) <= delta).astype(int)
-        # condition 2: ratio is smaller than a threshold
-        cp_reroute_ratio_matrix = ((self.tt_matrix / np.tile(drive_alone_tt, (1, ncol))) <= gamma).astype(int)
-        # condition 3: rider should at least share 50% of the total travel time
-        passenger_time = np.tile(drive_alone_tt.reshape(1, -1), (nrow, 1))
-        cp_time_similarity = ((passenger_time / self.tt_matrix) >= ita).astype(np.bool_)
-        # condition 4: after drop-off time / whole travel time?
-        # self.cp_reroute_matrix = cp_reroute_matrix # TODO: delete this row when not needed
-        self.cp_matrix = (self.cp_matrix &
-                          cp_reroute_matrix &
-                          cp_reroute_ratio_matrix &
-                          cp_time_similarity).astype(np.bool_)
-        # need to mask tt and ml matrix
-        self.tt_matrix[self.cp_matrix == 0] = np.nan
-        self.ml_matrix[self.cp_matrix == 0] = np.nan
+                              (backward_index <= mu2)).astype(bool)    
 
     def compute_carpoolable_trips_pnr(self, reset_off_diag: bool = False) -> None:
         """
@@ -900,327 +727,6 @@ class TripCluster:
         # print('Indices matching: \n', [index for index in indexes_pairs if index[0]!=index[1]])
         for index in indexes_pairs:
             self.compute_carpool(index[0], index[1], fixed_role=True)
-
-    def compute_optimal_lp(
-            self,
-            mute: bool = True,
-            use_both: bool = False,
-    ) -> None:
-        """
-        Use Gurobipy to solve for optimal solutions
-        :param mute: if True, don't print output results.
-        :param use_both: if True, consider both modes
-        :return: No return
-        """
-        nrow, ncol = self.nrow, self.ncol
-        # below functions are already called before in
-        # compute_in_one_step, no need to call again
-        # self.compute_depart_01_matrix_pre(Delta1=15)
-        # self.compute_pickup_01_matrix(threshold_dist=5280 * 5)
-        # self.compute_diagonal()  # compute drive alone scenarios
-        # self.compute_carpoolable_trips(reset_off_diag=False)
-        # self.compute_depart_01_matrix_post(Delta2=10)
-        # self.compute_reroute_01_matrix()
-
-        # use Gurobi linear programming solver to get optimal solution
-        md1 = Model("CP");
-        if mute:
-            md1.setParam('OutputFlag', 0)
-        # travel time matrix
-        if use_both:
-            tt_matrix = self.tt_matrix_all
-        else:
-            tt_matrix = self.tt_matrix
-        # a list of trips in the cluster
-        travel_pairs = np.argwhere(~np.isnan(tt_matrix))
-        tps = [tuple(tp.tolist()) for tp in travel_pairs]
-
-        # get cost for each travel pairs
-        c = {(i, j): tt_matrix[i, j] for i, j in tps}
-        x = md1.addVars(tps, vtype=GRB.BINARY)
-        # set objective function
-        md1.modelSense = GRB.MINIMIZE
-        md1.setObjective(quicksum(x[i, j] * c[i, j] for i, j in tps))
-
-        # a help method to get carpoolable indexes
-        def find_pairs(pairs, fixed_idx, fix_row=True):
-            returned_lst = []
-            for i, j in pairs:
-                if fix_row:
-                    if fixed_idx == i:
-                        returned_lst.append((i, j))
-                else:
-                    if fixed_idx == j:
-                        returned_lst.append((i, j))
-            return returned_lst
-
-        # add LP constraints
-        diag_size = min(nrow, ncol)
-        for i in range(nrow):
-            tp_row_lst = find_pairs(tps, i)
-            md1.addConstr(quicksum(x[p] for p in tp_row_lst) <= 1);  # row sum no greater than 1
-        for j in range(ncol):
-            tp_col_lst = find_pairs(tps, j, fix_row=False)
-            md1.addConstr(quicksum(x[p] for p in tp_col_lst) <= 1);  # col sum no greater than 1
-        # only assign roles for current queries, future ones can be left for assignment in the future
-        for i in range(diag_size):
-            tp_row_lst = find_pairs(tps, i)
-            tp_col_lst = find_pairs(tps, i, fix_row=False)
-            tp_all_lst = list(set(tp_row_lst + tp_col_lst))
-            # one cannot be both driver and passenger at the same time
-            md1.addConstr(quicksum(x[p] for p in tp_all_lst) == 1);  # row col sum equals to 1 exactly
-        # solve the problem.
-        md1.optimize()
-        # get results
-        self.result_lst = [p for p in tps if x[p].x > 0.5]
-
-    def evaluate_individual_trips_both(
-        self,
-        verbose: bool = False,
-        use_bipartite: bool = False,
-        trips: pd.DataFrame | None = None,
-    ):
-        """
-        After getting optimized results, expand the trip column with before after information for each person.
-        This code works for general cases.
-
-        If row not equals to column (in inherited classes), then only report the results of the lower left of the
-        square matrix!!!
-        :param verbose:
-        :param use_bipartite:
-        :return:
-        """
-        if trips is None:
-            trips = self.trips
-        self.trip_summary_df = trips[['new_min']].copy()
-        # init new columns (before/after travel time and distances)
-        # values are placeholder
-        self.trip_summary_df = self.trip_summary_df.assign(
-            **{'before_time': 0.0, 'before_dist': 0.0,
-               'after_time': 0.0, 'after_dist': 0.0,
-               'SOV': True, 'as_passenger': False,
-               'partner_idx': 0, 'station': -1})
-        # for each traveler, find its SOV trip time/distances,
-        # then find the optimized trip information
-        if use_bipartite is False:
-            temp_records = self.result_lst
-        else:
-            temp_records = self.result_lst_bipartite
-
-        index_paired = []
-        for d_idx, p_idx in temp_records:
-            d, p = self.int2idx[d_idx], self.int2idx[p_idx]
-            choice = self.choice_matrix[d_idx][p_idx]
-            sid = -1
-            if choice == 1:
-                trip1, trip2 = trips.loc[d], trips.loc[p]
-                sid = self._check_trips_best_pnr(trip1, trip2, d_idx, p_idx)
-                # note: need to select mode based on the choice matrix
-
-            # this is strictly the driver's time
-            row_d = [
-                self.soloTimes[d_idx], self.soloDists[d_idx],
-                self.tt_matrix_all[d_idx, p_idx], self.ml_matrix_all[d_idx, p_idx],
-                sid
-            ]
-
-            # passenger costs assumed a fixed number
-            # (need to recalculate passenger's new travel time in post analysis)
-            row_p = [self.soloTimes[p_idx], self.soloDists[p_idx],
-                     self.soloTimes[p_idx], self.soloDists[p_idx], sid]
-
-            row_d = [round(r, 3) for r in row_d]
-            row_p = [round(r, 3) for r in row_p]
-            if verbose:
-                print(d_idx, p_idx)
-                print(row_d)
-
-            self.trip_summary_df.loc[
-                d,
-                ['before_time', 'before_dist',
-                 'after_time', 'after_dist',
-                 'station']
-            ] = row_d
-
-            if p_idx != d_idx:  # carpool, not SOV in after case
-                # for passenger, travel is same as before
-                if verbose:
-                    print(row_p)
-                self.trip_summary_df.loc[
-                    p,
-                    ['before_time', 'before_dist',
-                     'after_time', 'after_dist',
-                     'station']
-                ] = row_p
-
-                # finally, update role info
-                self.trip_summary_df.loc[d, ['SOV', 'as_passenger', 'partner_idx']] = [False, False, p]
-                self.trip_summary_df.loc[p, ['SOV', 'as_passenger', 'partner_idx']] = [False, True, d]
-                index_paired.append(p)
-                index_paired.append(d)
-            else:  # drive alone (SOV)
-                # partner is the driver herself
-                self.trip_summary_df.loc[d, ['SOV', 'as_passenger', 'partner_idx']] = [True, False, d]
-                index_paired.append(p)
-        if verbose:
-            print('LP output results are updated.')
-        self.trip_summary_df = self.trip_summary_df.loc[index_paired, :]
-        return self.trip_summary_df
-
-    def evaluate_individual_trips(
-        self,
-        verbose: bool = False,
-        use_bipartite: bool = False
-    ) -> pd.DataFrame:
-        """
-        After getting optimized results, expand the trip column with before after information for each person.
-        This code works for general cases.
-
-        If row not equals to column (in inherited classes), then only report the results of the lower left of the
-        square matrix!!!
-        :param verbose:
-        :param use_bipartite:
-        :return:
-        """
-        nrow, ncol = self.nrow, self.ncol
-        # left_trips_filt = self.trips.SOV & (self.trips.new_min > self.t0 + self.epsilon)
-        # dropped_indexes = self.trips.loc[~left_trips_filt, :].index.tolist()
-        self.trip_summary_df = self.trips[['new_min']].copy()
-
-        # init new columns (before/after travel time and distances)
-        # values are placeholder
-        self.trip_summary_df = self.trip_summary_df.assign(
-            **{'before_time': 0.0, 'before_dist': 0.0,
-               'after_time': 0.0, 'after_dist': 0.0,
-               'SOV': True, 'as_passenger': False, 'partner_idx': 0})
-        # downcast to save memory
-        self.trip_summary_df = self.trip_summary_df.astype(
-            {"before_time": "float32", "before_dist": "float32",
-             'after_time': "float32", 'after_dist': "float32",
-             'partner_idx': "int32"})
-        # for each traveler, find its SOV trip time/distances,
-        # then find the optimized trip information
-        if use_bipartite is False:
-            temp_records = self.result_lst
-        else:
-            temp_records = self.result_lst_bipartite
-        # print('assignment list is:', temp_records)
-
-        index_paired = []
-        # index_int_paired = []
-        for d_idx, p_idx in temp_records:
-            d, p = self.int2idx[d_idx], self.int2idx[p_idx]
-            row_d = [self.soloTimes[d_idx], self.soloDists[d_idx],
-                     self.tt_matrix[d_idx, p_idx], self.ml_matrix[d_idx, p_idx]]
-            row_d = [round(r, 3) for r in row_d]
-
-            row_p = [self.soloTimes[p_idx], self.soloDists[p_idx],
-                     self.soloTimes[p_idx], self.soloDists[p_idx]]
-            row_p = [round(r, 3) for r in row_p]
-
-            self.trip_summary_df.loc[
-                d,
-                ['before_time', 'before_dist',
-                 'after_time', 'after_dist']
-            ] = row_d
-
-            if p_idx != d_idx:  # carpool, not SOV in after case
-                # for passenger, travel is same as before
-                if verbose:
-                    # print(row_p)
-                    pass
-                self.trip_summary_df.loc[
-                    p,
-                    ['before_time', 'before_dist',
-                     'after_time', 'after_dist']
-                ] = row_p
-
-                # finally, update role info
-                self.trip_summary_df.loc[d, ['SOV', 'as_passenger', 'partner_idx']] = [False, False, p]
-                self.trip_summary_df.loc[p, ['SOV', 'as_passenger', 'partner_idx']] = [False, True, d]
-                index_paired.append(p)
-                index_paired.append(d)
-                # index_int_paired.append(p_idx)
-                # index_int_paired.append(d_idx)
-            else:  # drive alone (SOV)
-                # partner is the driver herself
-                self.trip_summary_df.loc[d, ['SOV', 'as_passenger', 'partner_idx']] = [True, False, d]
-                index_paired.append(p)
-        self.trip_summary_df = self.trip_summary_df.loc[index_paired, :]
-        return self.trip_summary_df
-
-    def evaluate_trips(
-        self,
-        verbose: bool = False,
-        use_bipartite: bool = False
-    ):
-        """
-        Evaluate the assignment's performances. Interested in:
-        (1) The changes in total vehicular travel time
-        (2) The changes in total travel time
-        (3) Number of carpool pairs matched
-
-        The extra travel time solely contributed by driver reroutes to pick up passengers.
-        The first metric measures systemic benefits; The second measures driver's sacrifices.
-        For future case, more statistics will be developed to measure extreme cases.
-
-        If row not equals to column (in inherited classes), then only report the results of the left square matrix!!!
-        :return:
-        """
-        nrow, ncol = self.nrow, self.ncol
-
-        def count_parties(paired_lst):
-            party_lst = []
-            tot_count, num_paired = 0, 0
-            for pr in paired_lst:
-                if pr[0] == pr[1]:
-                    tot_count += 1
-                    party_lst.append(pr[0])
-                else:
-                    tot_count += 2
-                    num_paired += 2
-                    party_lst.append(pr[0])
-                    party_lst.append(pr[1])
-            return tot_count, num_paired, party_lst
-
-        if use_bipartite:
-            tot_count, num_paired, party_lst = count_parties(self.result_lst_bipartite)
-            rl = self.result_lst_bipartite
-        else:
-            tot_count, num_paired, party_lst = count_parties(self.result_lst)
-            rl = self.result_lst
-        # special case: If num of columns is greater than rows, then self pairs in the right part should
-        # not be concluded in the evaluation
-        ori_tt = sum(self.soloTimes[p] for p in party_lst)
-        ori_ml = sum(self.soloDists[p] for p in party_lst)
-        new_tt, new_ml = 0, 0
-        sid = None  # PNR station id
-        for p in rl:
-            if self.choice_matrix[p] == 0:
-                # print('simple:', p, self.tt_matrix[p], self.ml_matrix[p])
-                new_tt += self.tt_matrix[p]
-                new_ml += self.ml_matrix[p]
-            elif self.choice_matrix[p] == 1:
-                # print('shared:', p, self.tt_pnr_matrix[p], self.ml_pnr_matrix[p])
-                new_tt += self.tt_pnr_matrix[p]
-                new_ml += self.ml_pnr_matrix[p]  # + self.ml_pnr_matrix_p[p]
-                trip1, trip2 = self.trips.iloc[p[0], :], self.trips.iloc[p[1], :]
-                sid = self._check_trips_best_pnr(trip1, trip2, p[0], p[1])
-            else:  # no assign, drive alone
-                # print('drive alone')
-                new_tt += self.tt_pnr_matrix[p]
-                new_ml += self.ml_pnr_matrix[p]  # + self.ml_pnr_matrix_p[p]
-        if verbose:
-            print("{} persons found carpooling in a cluster with {} persons".format(num_paired, tot_count))
-            print_str = "Original total vehicular travel time is {} veh-min;\n"
-            print_str += "New total vehicular travel time is {} veh-min "
-            print(print_str.format(round(ori_tt, 2), round(new_tt, 2)))
-
-            print_str = "Original total vehicular travel mileage is {} miles;\n"
-            print_str += "New total vehicular travel mileage is {} miles."
-            print(print_str.format(round(ori_ml, 2), round(new_ml, 2)))
-
-        return tot_count, num_paired, ori_tt, new_tt, ori_ml, new_ml, sid
 
     def compute_optimal_bipartite(self) -> None:
         """
@@ -1347,17 +853,9 @@ class TripCluster:
         #  the above task should be cleverly done in step 2.
         # filter by precise path traveling distance
         self.compute_01_matrix_to_station_p2(delta=15, gamma=1.5)
-        if print_mat:
-            # print("ml matrix (after PNR pre scan)")
-            # print(self.ml_matrix[:10, :10])
-            pass
         # step 3. check departure time difference to filter (for all reasonable pnr stations)
         # this may filter out useful matches for PNR mode
-        self.compute_depart_01_matrix_pre_pnr(Delta1=Delta1)
-        if print_mat:
-            # print("ml matrix (after PNR depart check)")
-            # print(self.ml_matrix[:10, :10])
-            pass
+        self.cp_pnr_matrix = compute_depart_01_matrix_pre_pnr(self, Delta1=Delta1)
         # step 4. combine all aforementioned filters to generate one big filter
         self.compute_carpoolable_trips_pnr(reset_off_diag=False)
         if print_mat:
@@ -1379,7 +877,8 @@ class TripCluster:
             print(self.tt_pnr_matrix[:8, :8])
             pass
         # step 6. filter by real computed waiting time (instead of coordinates before)
-        self.compute_reroute_01_matrix_pnr(
+        self = compute_reroute_01_matrix_pnr(
+            trip_cluster=self,
             delta=delta, gamma=gamma, ita_pnr=ita_pnr,
             print_mat=print_mat
         )
@@ -1416,13 +915,12 @@ class TripCluster:
         mode: int,
     ):
         lp_summ, lp_summ_ind, bt_summ, bt_summ_ind = None, None, None, None
+        lp_cols = ['tot_num', 'paired_num', 'orig_tt', 'opti_tt', 'orig_ml', 'opti_ml']
         if rt_LP:
             self.result_lst = compute_optimal_lp()
             # tot_count, num_paired, ori_tt, new_tt, ori_ml, new_ml
             g_total_num, g_paired_num, g_ori_tt, new_tt, ori_ml, new_ml, sid = evaluate_trips(self, verbose=verbose)
-            lp_summ = pd.DataFrame(
-                columns=['tot_num', 'paired_num',
-                         'orig_tt', 'opti_tt', 'orig_ml', 'opti_ml'])
+            lp_summ = pd.DataFrame(columns=lp_cols)
             lp_summ.loc[0] = [g_total_num, g_paired_num, g_ori_tt, new_tt, ori_ml, new_ml]
             if mode == 0:
                 lp_summ_ind = evaluate_individual_trips(verbose=False, use_bipartite=False)
@@ -1432,9 +930,7 @@ class TripCluster:
             self.compute_optimal_bipartite()
             g_total_num2, g_paired_num2, g_ori_tt2, new_tt2, ori_ml2, new_ml2, sid = evaluate_trips(
                 self, verbose=verbose, use_bipartite=True)
-            bt_summ = pd.DataFrame(
-                columns=['tot_num', 'paired_num',
-                         'orig_tt', 'opti_tt', 'orig_ml', 'opti_ml'])
+            bt_summ = pd.DataFrame(columns=lp_cols)
             bt_summ.loc[0] = [g_total_num2, g_paired_num2, g_ori_tt2, new_tt2, ori_ml2, new_ml2]
             if mode == 0:
                 bt_summ_ind = evaluate_individual_trips(verbose=False, use_bipartite=True)
@@ -1502,10 +998,7 @@ class TripCluster:
         )
         fn = os.path.join(folder_name, "trip_paths.csv")
         with open(fn, 'a') as f:
-            travel_paths.to_csv(
-                f,
-                index=False, mode='a', header=f.tell() == 0
-            )
+            travel_paths.to_csv(f, index=False, mode='a', header=f.tell() == 0)
 
     def compute_in_one_step(
         self,  print_mat: bool = False,
@@ -1515,7 +1008,7 @@ class TripCluster:
         skip_combine: bool = False
     ):
         # step 1. check departure time difference to filter
-        self.compute_depart_01_matrix_pre(Delta1=Delta1)
+        self.cp_matrix = compute_depart_01_matrix_pre(self, Delta1=Delta1)
         # step 2. a set of filter based on Euclidean distance between coordinates
         self.compute_pickup_01_matrix(threshold_dist=dst_max, mu1=mu1, mu2=mu2)
         # step 3. compute drive alone cases
@@ -1529,7 +1022,7 @@ class TripCluster:
         # step 5. filter by the maximum waiting time for the driver at pickup location
         self.compute_depart_01_matrix_post(Delta2=Delta2, Gamma=Gamma)
         # step 6. filter by real computed waiting time (instead of coordinates before)
-        self.compute_reroute_01_matrix(delta=delta, gamma=gamma, ita=ita)
+        self = compute_reroute_01_matrix(self, delta=delta, gamma=gamma, ita=ita)
         if print_mat:
             print("after step 6")
             print("cp matrix:", self.cp_matrix.sum())
