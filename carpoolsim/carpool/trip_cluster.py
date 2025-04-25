@@ -17,7 +17,7 @@ from carpoolsim.carpool.util.network_search import (
     dynamic_shortest_path_search,
     naive_shortest_path_search
 )
-from carpoolsim.carpool.util.filters import (
+from carpoolsim.carpool.util.filters_pnr import (
     generate_pnr_trip_map_filt
 )
 from carpoolsim.carpool.util.plotter import (
@@ -29,6 +29,12 @@ from carpoolsim.carpool.util.mat_operations import (
     get_pnr_xys,
     get_distances_among_coordinates,
 )
+from carpoolsim.carpool.util.evaluator import (
+    evaluate_trips,
+    evaluate_individual_trips,
+    evaluate_individual_trips_both
+)
+from carpoolsim.carpool.util.solver import compute_optimal_lp
 
 np.set_printoptions(precision=3)
 
@@ -1411,29 +1417,29 @@ class TripCluster:
     ):
         lp_summ, lp_summ_ind, bt_summ, bt_summ_ind = None, None, None, None
         if rt_LP:
-            self.compute_optimal_lp()
+            self.result_lst = compute_optimal_lp()
             # tot_count, num_paired, ori_tt, new_tt, ori_ml, new_ml
-            g_total_num, g_paired_num, g_ori_tt, new_tt, ori_ml, new_ml, sid = self.evaluate_trips(verbose=verbose)
+            g_total_num, g_paired_num, g_ori_tt, new_tt, ori_ml, new_ml, sid = evaluate_trips(self, verbose=verbose)
             lp_summ = pd.DataFrame(
                 columns=['tot_num', 'paired_num',
                          'orig_tt', 'opti_tt', 'orig_ml', 'opti_ml'])
             lp_summ.loc[0] = [g_total_num, g_paired_num, g_ori_tt, new_tt, ori_ml, new_ml]
             if mode == 0:
-                lp_summ_ind = self.evaluate_individual_trips(verbose=False, use_bipartite=False)
+                lp_summ_ind = evaluate_individual_trips(verbose=False, use_bipartite=False)
             else:
-                lp_summ_ind = self.evaluate_individual_trips_both(verbose=False, use_bipartite=False)
+                lp_summ_ind = evaluate_individual_trips_both(verbose=False, use_bipartite=False)
         if rt_bipartite:
             self.compute_optimal_bipartite()
-            g_total_num2, g_paired_num2, g_ori_tt2, new_tt2, ori_ml2, new_ml2, sid = self.evaluate_trips(
-                verbose=verbose, use_bipartite=True)
+            g_total_num2, g_paired_num2, g_ori_tt2, new_tt2, ori_ml2, new_ml2, sid = evaluate_trips(
+                self, verbose=verbose, use_bipartite=True)
             bt_summ = pd.DataFrame(
                 columns=['tot_num', 'paired_num',
                          'orig_tt', 'opti_tt', 'orig_ml', 'opti_ml'])
             bt_summ.loc[0] = [g_total_num2, g_paired_num2, g_ori_tt2, new_tt2, ori_ml2, new_ml2]
             if mode == 0:
-                bt_summ_ind = self.evaluate_individual_trips(verbose=False, use_bipartite=True)
+                bt_summ_ind = evaluate_individual_trips(verbose=False, use_bipartite=True)
             else:
-                bt_summ_ind = self.evaluate_individual_trips_both(verbose=False, use_bipartite=True)
+                bt_summ_ind = evaluate_individual_trips_both(verbose=False, use_bipartite=True)
 
         if plot_all:
             travel_paths = None
@@ -1466,8 +1472,6 @@ class TripCluster:
                         travel_paths = [[idx1, "sov", paths1]]
                         self._save_travel_path(travel_paths, folder_name)
                         continue
-                    # print("bt_summ_ind")
-                    # print(bt_summ_ind)
                     idx1 = self.int2idx[pair[0]]
                     if "station" in bt_summ_ind.columns and bt_summ_ind.loc[idx1, "station"] != -1:
                         fig, ax, travel_paths = plot_single_trip_pnr(
