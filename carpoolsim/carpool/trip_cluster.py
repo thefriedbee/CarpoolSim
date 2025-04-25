@@ -5,30 +5,31 @@ import itertools
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
 import networkx as nx
 from gurobipy import Model, GRB, quicksum
 import sqlalchemy
 
-import matplotlib.pyplot as plt
-from matplotlib.legend_handler import HandlerPatch
-import matplotlib.patches as mpatches
-from matplotlib_scalebar.scalebar import ScaleBar
-import contextily as cx
-
 import carpoolsim.carpool_solver.bipartite_solver as tg
-from carpoolsim.visualization.carpool_viz_seq import plot_seq
 from carpoolsim.carpool.util.network_search import (
     get_path_distance_and_tt, 
     dynamic_shortest_path_search,
     naive_shortest_path_search
 )
-from carpoolsim.carpool.util.trip_filters import (
+from carpoolsim.carpool.util.filters import (
+    generate_pnr_trip_map_filt
+)
+from carpoolsim.carpool.util.plotter import (
+    plot_single_trip,
+    plot_single_trip_pnr
+)
+from carpoolsim.carpool.util.mat_operations import (
     get_trip_projected_ods,
+    get_pnr_xys,
     get_distances_among_coordinates,
-    get_pnr_xys
 )
 
-plt.rcParams.update({'font.size': 22})
 np.set_printoptions(precision=3)
 
 
@@ -175,51 +176,6 @@ class TripCluster:
             # update tt matrix and ml matrix
             np.fill_diagonal(self.tt_pnr_matrix, tt_lst)
             np.fill_diagonal(self.ml_pnr_matrix, dst_lst)
-
-    def generate_pnr_trip_map_filt(
-        self,
-        delta: float = 15,
-        gamma: float = 1.5,
-        trips: pd.DataFrame | None = None,
-    ):
-        """
-        :param delta: maximum reroute time (in minutes) acceptable for the driver
-        :param gamma: the maximum ratio of extra travel time over driver's original travel time
-
-        1. For each accessible PNR for a driver, compute their (arrival time, travel time to PNR)
-        2. Store the dictionary of <station id --> (arrival time, travel time to PNR)> to pnr trips matrix
-        :return:
-        """
-        if trips is None:
-            trips = self.trips
-        # return all indicies with value 1
-        ind = np.argwhere(self.pnr_01_matrix == 1)
-        # print('pnr trip map filt:', ind)
-        for ind_one in ind:
-            trip_id, station_id = ind_one
-            # print(trip_id, station_id)
-            self.compute_pnr_access(trip_id, station_id)
-            __, t1, __, t_all = self.pnr_access_info[trip_id, station_id]
-            # get travel alone time
-            t2 = self.soloTimes[trip_id]
-            # if not possible to access PNR station in time,
-            # change access pnr matrix information
-            if (t_all - t2) >= delta or t_all / (t2+0.1) >= gamma:
-                self.pnr_01_matrix[trip_id, station_id] = 0
-                # self.pnr_access_info[trip_id, station_id] = None
-                continue
-            # store station info to the list (could be multiple accessible PNR stations)
-            if trips['pnr'].iloc[trip_id] is None:
-                trips['pnr'].iloc[trip_id] = [station_id]
-            else:
-                trips['pnr'].iloc[trip_id].append(station_id)
-
-        # print new filtered results
-        # finally, prepare the big 0-1 matrix between travelers
-        temp_cp_pnr_matrix = ((self.pnr_01_matrix @ self.pnr_01_matrix.T) > 0).astype(np.bool_)
-        n_rows = self.cp_pnr_matrix.shape[0]
-        self.cp_pnr_matrix = (self.cp_pnr_matrix &
-                              temp_cp_pnr_matrix[:n_rows, :]).astype(np.bool_)
 
     def compute_pnr_access(self, trip_id: int, station_id: int) -> None:
         """
@@ -1260,219 +1216,6 @@ class TripCluster:
 
         return tot_count, num_paired, ori_tt, new_tt, ori_ml, new_ml, sid
 
-    def plot_single_trip(
-        self,
-        intind1: str, intind2: str,
-        network_df: pd.DataFrame | None = None,
-        fixed_role: bool = False,
-    ):
-        """
-        Plot carpool trip for a single trip corresponding to the matrix position (ind 1, ind 2)
-        Plot three carpool plans at once. A picks up B, B picks up A, one plot showing both schemes.
-        :param intind1: integer index 1 for the driver
-        :param intind2: integer index 2 for the passenger
-        :param network_df: network file containing geometry information for plotting
-        :return: lastly used plotting axes
-        """
-        # print depart time diff
-        tod_1, tod_2 = self.trips.iloc[intind1, :]['new_min'], self.trips.iloc[intind2, :]['new_min']
-        tt1 = self.tt_matrix_p1[intind1, intind2]
-        sb = [ScaleBar(1, "m", dimension="si-length", fixed_value=5*1000/0.621371,
-                       box_alpha=0.5, location="upper left",
-                       scale_formatter=lambda value, unit: f'{round(0.621371 * value/1000)} mile')
-              for i in range(2)]
-        if network_df is None:
-            network_df = self.links
-        network_df = network_df.to_crs("3857")
-
-        dists_1, links_1, dists_2, links_2 = self.compute_carpool(
-            intind1, intind2,
-            print_dist=False, fill_mat=False
-        )
-        # check shared route
-        d2, p2 = self.soloDists[intind2], self.soloPaths[intind2]
-        d1, p1 = self.soloDists[intind1], self.soloPaths[intind1]
-        # intind1 is driver, intind2 is passenger
-        # driver's trip or the whole trip
-        fig1, ax1, h1 = plot_seq(
-            trip_seq=links_1, gpd_df=network_df,
-            linewidth=2, color='red', arrow_color='red',
-            trip_df=self.trips.iloc[[intind1, intind2], :],
-            skeleton="I-285"
-        )
-
-        # passenger's trip or the shared trip
-        fig1, ax1, h2 = plot_seq(
-            trip_seq=p2, gpd_df=network_df,
-            ctd=True, color='green', linewidth=20,
-            ax=ax1, plt_arrow=False
-        )
-        plt.title(
-            f"Driver: {intind1}({tod_1}+{tt1:.2f}min); Passenger: {intind2}({tod_2}min)"
-        )
-
-        idx1 = self.int2idx[intind1]
-        idx2 = self.int2idx[intind2]
-        rec_driver = [idx1, "dc_driver", links_1]
-        rec_passenger = [idx2, "dc_passenger", p2]
-        rec_combined = [rec_driver, rec_passenger]
-
-        # helper function
-        def make_legend_arrow(legend, orig_handle, xdescent, ydescent,
-                              width, height, fontsize):
-            p = mpatches.FancyArrow(0, 0.5 * height, width, 0,
-                                    length_includes_head=True, head_width=0.75 * height,
-                                    shape='left')
-            return p
-        plt.legend(handles=h1+h2+[mpatches.Patch(color='green', label='shared trip', alpha=0.3)],
-                   handler_map={mpatches.FancyArrow: HandlerPatch(patch_func=make_legend_arrow)},
-                   loc='lower right', fontsize=20)
-
-        # add base map for fig1
-        cx.add_basemap(ax1, source=cx.providers.CartoDB.Voyager)
-        ax1.add_artist(sb[0])
-        ax1.axis("off")
-
-        # If fixed rule, stop plotting!!!
-        if fixed_role:
-            return fig1, ax1, rec_combined
-
-        # intind2 is driver, intind1 is passenger
-        fig2, ax2, h3 = plot_seq(
-            trip_seq=links_2, gpd_df=network_df,
-            color='red', arrow_color='red', linewidth=2,
-            ax=None, trip_df=self.trips.iloc[[intind2, intind1], :]
-        )
-        fig2, ax2, h4 = plot_seq(
-            trip_seq=p1, gpd_df=network_df,
-            ctd=True, color='green', linewidth=20,
-            ax=ax2, plt_arrow=False
-        )
-        plt.legend(handles=h3+h4+[mpatches.Patch(color='green', label='shared trip', alpha=0.3)],
-                   handler_map={mpatches.FancyArrow: HandlerPatch(patch_func=make_legend_arrow)},
-                   loc='lower right', fontsize=20)
-        # add base map for fig2
-        plt.title(
-            f"Driver: {intind2}({tod_2}min); Passenger: {intind1}({tod_1}min)"
-        )
-        cx.add_basemap(ax2, source=cx.providers.CartoDB.Voyager)
-        ax2.add_artist(sb[1])
-        ax2.axis("off")
-        return fig1, fig2
-
-    def plot_single_trip_pnr(
-        self, intind1: int, intind2: int,
-        trips: pd.DataFrame | None = None,
-        network_df: pd.DataFrame | None = None,
-        fixed_role: bool = False,
-    ):
-        idx1, idx2 = self.int2idx[intind1], self.int2idx[intind2]
-        if trips is None:
-            trips = self.trips
-            sid = trips.loc[idx1, 'pnr'][0]
-        else:
-            sid = trips.loc[idx1, 'station']
-        # print depart time diff
-        tod_1, tod_2 = trips.loc[idx1, :]['new_min'], trips.loc[idx2, :]['new_min']
-        tt1, tt2 = None, None
-
-        if self.pnr_access_info[intind1, sid] is not None:
-            tt1 = self.pnr_access_info[intind1, sid][1]
-        if self.pnr_access_info[intind2, sid] is not None:
-            tt2 = self.pnr_access_info[intind2, sid][1]
-        # scale bar
-        sb = [ScaleBar(1, "m", dimension="si-length", fixed_value=5*1000/0.621371,
-                       box_alpha=0.5, location="upper left",
-                       scale_formatter=lambda value, unit: f'{round(0.621371 * value/1000)} mile')
-              for i in range(2)]
-        if network_df is None:
-            network_df = self.links
-        # dists_1, links_1, dists_2, links_2
-        dists_1, (links_1p, links_1d0, links_1d1, links_1d2), \
-            dists_2, (links_2p, links_2d0, links_2d1, links_2d2), station_id = \
-            self.compute_carpool_pnr(intind1, intind2, print_dist=False, fill_mat=False)
-
-        # intind1 is driver, intind2 is passenger
-        # (red arrow): vehicle trajectory
-        fig1, ax1, h1 = plot_seq(
-            trip_seq=links_1d0+links_1d1+links_1d2, gpd_df=network_df,
-            linewidth=2, color='red', arrow_color='red',
-            trip_df=self.trips.iloc[[intind1, intind2], :],
-            station_df=self.parking_lots.iloc[[station_id]]
-        )
-
-        # (trip segment 1): from driver start --> meet point
-        fig1, ax1, h2 = plot_seq(
-            trip_seq=links_1p, gpd_df=network_df, ctd=True,
-            linewidth=10, color='blue',
-            ax=ax1, plt_arrow=False
-        )
-
-        # (trip segment 2): from meet point --> end
-        fig1, ax1, h2 = plot_seq(
-            trip_seq=links_1d1, gpd_df=network_df, ctd=True,
-            linewidth=20, color='green',
-            ax=ax1, plt_arrow=False
-        )
-
-        rec_driver = [idx1, "pnr_driver", links_1d0+links_1d1+links_1d2]
-        rec_passenger = [idx2, "pnr_passenger", links_1d1]
-        rec = [rec_driver, rec_passenger]
-
-        # plot coordinate of station id
-        plt.title(
-            f"Driver: {intind1}({tod_1}+{tt1:.2f}min); Passenger: {intind2}({tod_2}min) (Park and Ride)"
-        )
-        cx.add_basemap(ax1, source=cx.providers.CartoDB.Voyager)
-        ax1.add_artist(sb[0])
-        ax1.axis("off")
-        # helper function
-        def make_legend_arrow(legend, orig_handle, xdescent, ydescent,
-                              width, height, fontsize):
-            p = mpatches.FancyArrow(0, 0.5 * height, width, 0,
-                                    length_includes_head=True, head_width=0.75 * height,
-                                    shape='left')
-            return p
-        plt.legend(handles=(h1 + h2 + [mpatches.Patch(color='green', label='shared trip', alpha=0.3)] +
-                            [mpatches.Patch(color='blue', label="passenger's drive to PNR", alpha=0.3)]),
-                   handler_map={mpatches.FancyArrow: HandlerPatch(patch_func=make_legend_arrow)},
-                   loc='lower right', fontsize=20)
-
-        # If fixed rule, stop plotting!!!
-        if fixed_role:
-            return fig1, ax1, rec
-
-        # intind2 is driver, intind1 is passenger
-        fig2, ax2, h3 = plot_seq(
-            trip_seq=links_2d0+links_2d1+links_2d2, gpd_df=network_df,
-            color='red', arrow_color='red', linewidth=2,
-            ax=None, trip_df=self.trips.iloc[[intind2, intind1], :],
-            station_df=self.parking_lots.iloc[[station_id]]
-        )
-        fig2, ax2, h4 = plot_seq(
-            trip_seq=links_2p, gpd_df=network_df, ctd=True,
-            linewidth=10, color='blue', arrow_color='blue',
-            ax=ax2, plt_arrow=False
-        )
-        fig2, ax2, h5 = plot_seq(
-            trip_seq=links_2d1, gpd_df=network_df, ctd=True,
-            linewidth=20, color='green',
-            ax=ax2, plt_arrow=False
-        )
-
-        # plt.title("Driver: {}; Passenger: {} (Park and Ride)".format(intind2, intind1))
-        plt.title(
-            f"Driver: {intind2}({tod_2}+{tt2:.2f}min); Passenger: {intind1}({tod_1}min) (Park and Ride)"
-        )
-        plt.legend(handles=(h3+h4+[mpatches.Patch(color='green', label='shared trip', alpha=0.3)]
-                            + [mpatches.Patch(color='blue', label="passenger's drive to PNR", alpha=0.3)]),
-                   handler_map={mpatches.FancyArrow: HandlerPatch(patch_func=make_legend_arrow)},
-                   loc='lower right', fontsize=20)
-        cx.add_basemap(ax2, source=cx.providers.CartoDB.Voyager)
-        ax2.add_artist(sb[1])
-        ax2.axis("off")
-        return (fig1, ax1), (fig2, ax2)
-
     def compute_optimal_bipartite(self) -> None:
         """
         Solve the pairing problem using traditional bipartite method.
@@ -1703,9 +1446,13 @@ class TripCluster:
                     if pair[0] == pair[1]:
                         continue
                     if bt_summ_ind.iloc[pair[0]]["station"] != -1:
-                        fig, ax, travel_paths = self.plot_single_trip_pnr(pair[0], pair[1], trips=bt_summ_ind, fixed_role=True)
+                        fig, ax, travel_paths = plot_single_trip_pnr(
+                            self, pair[0], pair[1], network_df=self.links, fixed_role=True
+                        )
                     else:
-                        fig, ax, travel_paths = self.plot_single_trip(pair[0], pair[1], fixed_role=True)
+                        fig, ax, travel_paths = plot_single_trip(
+                            self, pair[0], pair[1], network_df=self.links, fixed_role=True
+                        )
                     file_name = "{}_{}.PNG".format(*pair)
                     pn = os.path.join(folder_name, file_name)
                     fig.savefig(pn)
@@ -1723,12 +1470,12 @@ class TripCluster:
                     # print(bt_summ_ind)
                     idx1 = self.int2idx[pair[0]]
                     if "station" in bt_summ_ind.columns and bt_summ_ind.loc[idx1, "station"] != -1:
-                        fig, ax, travel_paths = self.plot_single_trip_pnr(
-                            pair[0], pair[1], trips=bt_summ_ind, fixed_role=True
+                        fig, ax, travel_paths = plot_single_trip_pnr(
+                            self, pair[0], pair[1], network_df=self.links, fixed_role=True
                         )
                     else:
-                        fig, ax, travel_paths = self.plot_single_trip(
-                            pair[0], pair[1], fixed_role=True
+                        fig, ax, travel_paths = plot_single_trip(
+                            self, pair[0], pair[1], network_df=self.links, fixed_role=True
                         )
                     ax.get_legend().remove()
                     file_name = "{}_{}.PNG".format(*pair)
@@ -1768,7 +1515,8 @@ class TripCluster:
         # step 2. a set of filter based on Euclidean distance between coordinates
         self.compute_pickup_01_matrix(threshold_dist=dst_max, mu1=mu1, mu2=mu2)
         # step 3. compute drive alone cases
-        self.compute_diagonal()
+        soloPaths, soloTimes, soloDists, tt_lst, dst_lst = self.compute_diagonal()
+        self.fill_diagonal(tt_lst, dst_lst)
         # step 4. combine all aforementioned filters to generate one big filter
         self.compute_carpoolable_trips(reset_off_diag=False)
         if print_mat:
