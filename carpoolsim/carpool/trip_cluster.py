@@ -11,6 +11,7 @@ import networkx as nx
 import sqlalchemy
 
 import carpoolsim.carpool_solver.bipartite_solver as tg
+from carpoolsim.carpool.util.trip_cluster_dumb import TripClusterAbstract
 from carpoolsim.carpool.util.network_search import (
     get_path_distance_and_tt, 
     dynamic_shortest_path_search,
@@ -40,14 +41,15 @@ from carpoolsim.carpool.util.filters_dc import (
 )
 from carpoolsim.carpool.util.filters_pnr import (
     compute_depart_01_matrix_pre_pnr,
-    compute_reroute_01_matrix_pnr
+    compute_reroute_01_matrix_pnr,
+    compute_depart_01_matrix_post_pnr
 )
-
+from carpoolsim.carpool.util.io import save_travel_path
 np.set_printoptions(precision=3)
 
 
 # TripHolder is depreciated. Use this class for all kinds of carpool computation tasks
-class TripCluster:
+class TripCluster(TripClusterAbstract):
     def __init__(
         self,
         df: pd.DataFrame,
@@ -275,18 +277,10 @@ class TripCluster:
 
         # TODO: check the correctness of the following logic
         # origin distance in (x, y) axis between trip origin and parking lots (vectorized)
-        mat_om_x = np.tile(oxs.transpose(), (1, lots_ncol))
-        mat_om_x = np.abs(mat_om_x - np.tile(mxs, (num_all, 1)))
-        mat_om_y = np.tile(oys.transpose(), (1, lots_ncol))
-        mat_om_y = np.abs(mat_om_y - np.tile(mys, (num_all, 1)))
-        # destination distance in (x, y) axis between trip destination and parking lots (vectorized)
-        mat_md_x = np.tile(dxs.transpose(), (1, lots_ncol))
-        mat_md_x = np.abs(np.tile(mxs, (num_all, 1)) - mat_md_x)
-        mat_md_y = np.tile(dys.transpose(), (1, lots_ncol))
-        mat_md_y = np.abs(np.tile(mys, (num_all, 1)) - mat_md_y)
+        mat_om_x, mat_om_y, man_od = get_distances_among_coordinates(oxs, oys)
+        mat_md_x, mat_md_y, man_om = get_distances_among_coordinates(dxs, dys)
         # original distance from o to d for each trip
-        mat_od_x = dxs - oxs
-        mat_od_y = dys - oys
+        mat_od_x, mat_od_y, man_md = get_distances_among_coordinates(oxs, dxs)
 
         # compute reroute distance using pnr facility
         post_dist = (man_om + man_md)
@@ -531,57 +525,6 @@ class TripCluster:
                     ' Time spend is {} seconds'
         print(print_str.format(max(nrow, ncol), time.time() - t0))
 
-    def compute_depart_01_matrix_post_pnr(
-        self,
-        Delta2: float = 10,
-        Gamma: float = 0.2,
-        default_rule: bool = True,
-    ):
-        """
-        Filter PNR trips considering driver's waiting time is limited
-        :param Delta2: the driver's maximum waiting time
-        :param default_rule:
-            if True, strict time different (applies for driver)
-            if False, absolute time difference (applies for both travelers)
-        :return:
-        """
-        # complex and slow method for post analysis
-        nrow, ncol = self.nrow, self.ncol
-        # step 1. get the travel time to each feasible station
-        ind = np.argwhere(self.cp_pnr_matrix == 1)
-        # pnr depart time matrix (diff between drivers)
-        mat = np.full((nrow, ncol), np.nan)
-        for ind_one in ind:
-            trip_id1, trip_id2 = ind_one
-            # get station id they share
-            trip_row1 = self.trips.iloc[trip_id1]
-            trip_row2 = self.trips.iloc[trip_id2]
-            sid = self._check_trips_best_pnr(trip_row1, trip_row2, trip_id1, trip_id2)
-            # print(ind_one, ";", sid)
-            if sid is None:
-                continue
-            # access information (path, time, distance)
-            info1 = self.pnr_access_info[trip_id1, sid]
-            info2 = self.pnr_access_info[trip_id2, sid]
-            t1 = self.trips['new_min'].iloc[trip_id1] + info1[1]  # arrival time at pnr for person 1
-            t2 = self.trips['new_min'].iloc[trip_id2] + info2[1]  # arrival time at pnr for person 2
-            # the number of minutes it takes for passenger to wait for the driver
-            mat[trip_id1][trip_id2] = t1 - t2
-            mat[trip_id2][trip_id1] = t2 - t1
-
-        passenger_time = np.array([self.soloTimes[i] for i in range(self.ncol)]).reshape(1, -1)
-        passenger_time = np.tile(passenger_time, (nrow, 1))
-        if default_rule:
-            # passenger only waits the driver should wait at most Delta2 minutes
-            self.cp_pnr_matrix = (self.cp_pnr_matrix &
-                                  (mat >= 0) & (mat <= Delta2) &
-                                  (np.absolute(mat/passenger_time) <= Gamma)).astype(np.bool_)
-        else:
-            # passenger/driver waits the other party for at most Delta2 minutes
-            self.cp_pnr_matrix = (self.cp_pnr_matrix &
-                                  (np.absolute(mat) <= Delta2) &
-                                  (np.absolute(mat/passenger_time) <= Gamma).astype(np.bool_))
-
     def compute_depart_01_matrix_post(
         self,
         Delta2: float = 10,
@@ -702,10 +645,7 @@ class TripCluster:
         for index in indexes_pairs:
             self.compute_carpool_pnr(index[0], index[1], fixed_role=True)
 
-    def compute_carpoolable_trips(
-            self,
-            reset_off_diag: bool = False
-    ) -> None:
+    def compute_carpoolable_trips(self, reset_off_diag: bool = False) -> None:
         """
         Instead of computing all combinations, only compute all carpool-able trips.
         :param reset_off_diag: if True, reset all carpool trips information EXCEPT drive alone trips
@@ -844,10 +784,6 @@ class TripCluster:
             threshold_dist=dst_max, mu1=mu1, mu2=mu2,
             trips=self.trips, use_mu2=True, print_mat=print_mat
         )
-        if print_mat:
-            # print("ml matrix (after PNR pre scan)")
-            # print(self.ml_matrix[:10, :10])
-            pass
         # step 2 make sure each SOV trip can travel through PNR
         # Note: filter by the passenger's before after traveling time (just as those for passengers)
         #  the above task should be cleverly done in step 2.
@@ -867,7 +803,9 @@ class TripCluster:
             print(self.tt_pnr_matrix[:8, :8])
             pass
         # step 5. filter by the maximum waiting time for the driver at pickup location
-        self.compute_depart_01_matrix_post_pnr(Delta2=Delta2, Gamma=Gamma)
+        self.cp_pnr_matrix = compute_depart_01_matrix_post_pnr(
+            trip_cluster=self, Delta2=Delta2, Gamma=Gamma
+        )
         if print_mat:
             # print("ml matrix (after step 5)")
             # print(self.ml_matrix[:10, :10])
@@ -966,7 +904,7 @@ class TripCluster:
                         paths1 = self.soloPaths[pair[0]]
                         idx1 = self.int2idx[pair[0]]
                         travel_paths = [[idx1, "sov", paths1]]
-                        self._save_travel_path(travel_paths, folder_name)
+                        save_travel_path(travel_paths, folder_name)
                         continue
                     idx1 = self.int2idx[pair[0]]
                     if "station" in bt_summ_ind.columns and bt_summ_ind.loc[idx1, "station"] != -1:
@@ -984,21 +922,8 @@ class TripCluster:
                     plt.clf()
 
                     if travel_paths is not None:
-                        self._save_travel_path(travel_paths, folder_name)
+                        save_travel_path(travel_paths, folder_name)
         return lp_summ, lp_summ_ind, bt_summ, bt_summ_ind
-
-    def _save_travel_path(
-        self,
-        travel_paths: str,
-        folder_name: str,
-    ) -> None:
-        travel_paths = pd.DataFrame(
-            travel_paths,
-            columns=["person_idx", "role", "travel_path"]
-        )
-        fn = os.path.join(folder_name, "trip_paths.csv")
-        with open(fn, 'a') as f:
-            travel_paths.to_csv(f, index=False, mode='a', header=f.tell() == 0)
 
     def compute_in_one_step(
         self,  print_mat: bool = False,
