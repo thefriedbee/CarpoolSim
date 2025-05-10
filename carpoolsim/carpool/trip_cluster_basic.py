@@ -55,7 +55,7 @@ class TripDemands:
             soloPaths[integer_idx] = pth_nodes
             soloTimes[integer_idx] = tt
             soloDists[integer_idx] = dst
-            tt_lst.append(tt)
-            dst_lst.append(dst)
+            tt_lst.append(round(tt, 2))
+            dst_lst.append(round(dst, 2))
             integer_idx += 1
         return soloPaths, soloTimes, soloDists, tt_lst, dst_lst

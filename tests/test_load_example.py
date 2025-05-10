@@ -5,6 +5,7 @@ import pandas as pd
 
 # load environment variables
 import carpoolsim.basic_settings as bs
+import carpoolsim.dataclass.utils as ut
 
 
 # load dataframes for testing
@@ -37,4 +38,20 @@ pnr_lots = gpd.read_file(
 )
 
 print("Finished loading example shapefiles/dataframes")
+print("preprocess dataframes")
 
+
+# match origin/destination to nearest nodes represented in coordinates!
+trips[["ox", "oy", "o_node"]] = trips.apply(
+    ut.get_xy,
+    axis=1, df_nodes=df_nodes, mode="orig"
+)
+trips[["dx", "dy", "d_node"]] = trips.apply(
+    ut.get_xy,
+    axis=1, df_nodes=df_nodes, mode="dest"
+)
+pnr_lots['taz'] = pnr_lots['geometry'].apply(
+    ut.get_taz, tazs=tazs
+)
+
+print("Finished preprocess dataframes")
