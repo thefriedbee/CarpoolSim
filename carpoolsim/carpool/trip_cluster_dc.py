@@ -146,7 +146,7 @@ class TripClusterDC:
         Delta2: float = 10,
         Gamma: float = 0.2,
         default_rule: bool = True,
-    ):
+    ) -> None:
         """
         After tt_matrix_p1 is computed, filter by maximum waiting time for the driver at pickup location
         :param Delta2: driver's maximum waiting time
@@ -243,7 +243,7 @@ class TripClusterDC:
             self.cp_matrix = (self.cp_matrix &
                               (backward_index <= mu2)).astype(bool)   
 
-    def compute_carpoolable_trips(self, reset_off_diag: bool = False) -> None:
+    def evaluate_carpoolable_trips(self, reset_off_diag: bool = False) -> None:
         """
         Instead of computing all combinations, only compute all carpool-able trips.
         :param reset_off_diag: 
@@ -273,7 +273,7 @@ class TripClusterDC:
         This is to compare results with that of linear programming one
         :return:
         """
-        bipartite_obj = tg.CarpoolBipartite(self.cp_matrix_all, self.tt_matrix_all)
+        bipartite_obj = tg.CarpoolBipartite(self.cp_matrix, self.tt_matrix)
         num_pair, pairs = bipartite_obj.solve_bipartite_conflicts_naive()
         return num_pair, pairs
 
@@ -292,7 +292,7 @@ class TripClusterDC:
         soloPaths, soloTimes, soloDists, tt_lst, dst_lst = self.compute_diagonal()
         self.fill_diagonal(tt_lst, dst_lst)
         # step 4. combine all aforementioned filters to generate one big filter
-        self.compute_carpoolable_trips(reset_off_diag=False)
+        self.evaluate_carpoolable_trips(reset_off_diag=False)
         if print_mat:
             print("after step 4")
             print("cp matrix:", cp_matrix.sum())

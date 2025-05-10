@@ -68,8 +68,12 @@ def test_tdc_compute_depart_01_matrix_post(trip_demands=trip_demands):
     tdc = TripClusterDC(trip_demands)
     tdc.compute_depart_01_matrix_post()
     print(tdc.tt_matrix_p1)
+    assert True
+
+
+def test_tdc_compute_optimal_bipartite(trip_demands=trip_demands):
+    tdc = TripClusterDC(trip_demands)
+    num_pair, pairs = tdc.compute_optimal_bipartite()
+    print(f"num_pair: {num_pair}, pairs: {pairs}")
     assert False
-
-
-
 
