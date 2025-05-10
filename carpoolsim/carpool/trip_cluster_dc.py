@@ -35,7 +35,7 @@ class TripClusterDC:
         self.tt_matrix_p1 = np.full((N, N), np.nan, dtype="float32")
         self.tt_matrix_p2 = np.full((N, N), np.nan, dtype="float32")
         self.tt_matrix_p3 = np.full((N, N), np.nan, dtype="float32")
-    
+
     @property
     def shape(self):
         # (#rows, #columns)
@@ -267,7 +267,7 @@ class TripClusterDC:
         for index in indexes_pairs:
             self.compute_carpool(index[0], index[1], fixed_role=True)
 
-    def compute_optimal_bipartite(self) -> None:
+    def compute_optimal_bipartite(self) -> tuple[int, list[tuple[int, int]]]:
         """
         Solve the pairing problem using traditional bipartite method.
         This is to compare results with that of linear programming one
@@ -275,18 +275,17 @@ class TripClusterDC:
         """
         bipartite_obj = tg.CarpoolBipartite(self.cp_matrix_all, self.tt_matrix_all)
         num_pair, pairs = bipartite_obj.solve_bipartite_conflicts_naive()
-        self.result_lst_bipartite = pairs
-
+        return num_pair, pairs
 
     def compute_in_one_step(
         self,  print_mat: bool = False,
         mu1: float = 1.5, mu2: float = 0.1, dst_max: float = 5 * 5280,
         Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
         delta: float = 15, gamma: float = 1.5, ita: float = 0.5,
-        skip_combine: bool = False
-    ):
+    ) -> tuple[int, list[tuple[int, int]]]:
+        cp_matrix, tt_matrix, ml_matrix = self.cp_matrix, self.tt_matrix, self.ml_matrix
         # step 1. check departure time difference to filter
-        self.cp_matrix = compute_depart_01_matrix_pre(self, Delta1=Delta1)
+        compute_depart_01_matrix_pre(self, Delta1=Delta1)
         # step 2. a set of filter based on Euclidean distance between coordinates
         self.compute_pickup_01_matrix(threshold_dist=dst_max, mu1=mu1, mu2=mu2)
         # step 3. compute drive alone cases
@@ -296,37 +295,22 @@ class TripClusterDC:
         self.compute_carpoolable_trips(reset_off_diag=False)
         if print_mat:
             print("after step 4")
-            print("cp matrix:", self.cp_matrix.sum())
+            print("cp matrix:", cp_matrix.sum())
         # step 5. filter by the maximum waiting time for the driver at pickup location
         self.compute_depart_01_matrix_post(Delta2=Delta2, Gamma=Gamma)
         # step 6. filter by real computed waiting time (instead of coordinates before)
         self = compute_reroute_01_matrix(self, delta=delta, gamma=gamma, ita=ita)
+        # step 7. compute optimal bipartite pairing
+        num_pair, pairs = self.compute_optimal_bipartite()
         if print_mat:
             print("after step 6")
-            print("cp matrix:", self.cp_matrix.sum())
+            print("cp matrix:", cp_matrix.sum())
             # print(self.cp_matrix[:8, :8])
-            print("tt matrix:", (self.tt_matrix > 0).sum())
+            print("tt matrix:", (tt_matrix > 0).sum())
             # print(self.tt_matrix[:8, :8])
-            print("ml matrix:", (self.ml_matrix > 0).sum())
+            print("ml matrix:", (ml_matrix > 0).sum())
             # print(self.ml_matrix[:8, :8])
-        if skip_combine is False:
-            # step 7. just copy matrix value to "combined modes" matrices (for a uniformed computational framework)
-            self.combine_simple_carpool(print_mat=print_mat)
-        if print_mat:
-            print("cp matrix (after step 7):", self.cp_matrix.sum())
-            print(self.cp_matrix[:8, :8])
-            print("combined matrix (after step 7):", self.cp_matrix_all.sum())
-            print(self.cp_matrix_all[:8, :8])
-
-
-
-
-
-
-
-
-
-
+        return num_pair, pairs
 
 
 

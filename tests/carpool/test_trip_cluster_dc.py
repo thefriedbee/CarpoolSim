@@ -37,10 +37,10 @@ def prepare_trip_demands():
     )
     trip_demands.compute_sov_info()
     return trip_demands
+trip_demands = prepare_trip_demands()
 
 
-def test_tdc_fill_diagonal():
-    trip_demands = prepare_trip_demands()
+def test_tdc_fill_diagonal(trip_demands=trip_demands):
     tdc = TripClusterDC(trip_demands)
     tt_lst = trip_demands.soloTimes
     dst_lst = trip_demands.soloDists
@@ -52,8 +52,7 @@ def test_tdc_fill_diagonal():
     assert True
 
 
-def test_tdc_compute_carpool():
-    trip_demands = prepare_trip_demands()
+def test_tdc_compute_carpool(trip_demands=trip_demands):
     tdc = TripClusterDC(trip_demands)
     tt_lst = trip_demands.soloTimes
     dst_lst = trip_demands.soloDists
@@ -63,17 +62,14 @@ def test_tdc_compute_carpool():
     print(ret1)
     print(ret2)
     assert True
+    
+
+def test_tdc_compute_depart_01_matrix_post(trip_demands=trip_demands):
+    tdc = TripClusterDC(trip_demands)
     tdc.compute_depart_01_matrix_post()
     print(tdc.tt_matrix_p1)
     assert False
 
 
-def test_tdc_compute_depart_01_matrix_post():
-    trip_demands = TripDemands(
-        sample_trips, 
-        dict_network['DG'], 
-        dict_network['links'], 
-        engine
-    )
-    trip_demands.compute_sov_info()
-    tdc = TripClusterDC(trip_demands)
+
+
