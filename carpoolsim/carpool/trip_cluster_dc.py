@@ -36,9 +36,9 @@ class TripClusterDC(TripClusterAbstract):
         self,
         int_idx1: int,
         int_idx2: int,
+        fixed_role: bool = False,
         print_dist: bool = False,
         fill_mat: bool = True,
-        fixed_role: bool = False,
     ):
         """
         Given the integer index of two trips (of the trip DataFrame self.df),
