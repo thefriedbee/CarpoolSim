@@ -1,6 +1,6 @@
 import numpy as np
-import graph_tool.flow as gt
-from graph_tool.all import *
+# import graph_tool.flow as gt
+# from graph_tool.all import *
 
 
 # find maximal Bipartite matching for general graph (given feasibility matrix of any shape)
@@ -178,18 +178,14 @@ class CarpoolBipartite:
                 break
         return return_matches
 
-    def solve_bipartite_conflicts_naive(self, use_graph_tool: bool = False):
+    def solve_bipartite_conflicts_naive(self):
         """
         Solve role conflicts (one cannot be passenger and driver at the same time)
         1. find all matching chains/loops
         2. For each chain, delete about half of the matching until there are no conflicts
         :return: num of matches and a list of matches
         """
-        if not use_graph_tool:
-            count_pairs, match_reverse = self.solve_bipartite()
-        else:
-            count_pairs, match_reverse = self.solve_bipartite_gt()
-            # match_reverse = [u if u != -1 else v for v, u in enumerate(match_reverse)]
+        count_pairs, match_reverse = self.solve_bipartite()
         match_forward = [-1] * self.driver  # default is drive alone
         for v, u in enumerate(match_reverse):
             if u != -1:
@@ -230,75 +226,75 @@ class CarpoolBipartite:
         # print('Matching pairs are: ', sorted(all_matches))
         return len(all_matches), all_matches
 
-    def solve_bipartite_gt(self):
-        """
-        Solve role conflicts (one cannot be passenger and driver at the same time)
-        1. find all matching chains
-        2. For each chain, select feasible matching greedily until no more matching
-        :return:
-        """
-        count_pairs, match_reverse = solve_bipartite_maxflow(self.cp_matrix)
-        return count_pairs, match_reverse
+    # def solve_bipartite_gt(self):
+    #     """
+    #     Solve role conflicts (one cannot be passenger and driver at the same time)
+    #     1. find all matching chains
+    #     2. For each chain, select feasible matching greedily until no more matching
+    #     :return:
+    #     """
+    #     count_pairs, match_reverse = solve_bipartite_maxflow(self.cp_matrix)
+    #     return count_pairs, match_reverse
 
 
-def solve_bipartite_maxflow(mat: np.ndarray):
-    """
-    :param mat: the carpool-able 0-1 matrix
-    """
-    nrow, ncol = mat.shape
-    g = Graph()
-    # construct network (add node and vertices)
-    for i in range(nrow):  # nodes for "driver"
-        g.add_vertex(i)
-    for j in range(ncol):  # nodes for "passenger"
-        g.add_vertex(j+nrow)
-    # construct edge weight
-    cap = g.new_edge_property("int")
-    indicies = list(zip(*np.where(mat > 0)))
-    for ind in indicies:
-        i, j = ind
-        I, J = i, j + nrow
-        g.add_edge(g.vertex(I), g.vertex(J))
-        e = g.edge(g.vertex(I), g.vertex(J))
-        cap[e] = mat[i, j]
+# def solve_bipartite_maxflow(mat: np.ndarray):
+#     """
+#     :param mat: the carpool-able 0-1 matrix
+#     """
+#     nrow, ncol = mat.shape
+#     g = Graph()
+#     # construct network (add node and vertices)
+#     for i in range(nrow):  # nodes for "driver"
+#         g.add_vertex(i)
+#     for j in range(ncol):  # nodes for "passenger"
+#         g.add_vertex(j+nrow)
+#     # construct edge weight
+#     cap = g.new_edge_property("int")
+#     indicies = list(zip(*np.where(mat > 0)))
+#     for ind in indicies:
+#         i, j = ind
+#         I, J = i, j + nrow
+#         g.add_edge(g.vertex(I), g.vertex(J))
+#         e = g.edge(g.vertex(I), g.vertex(J))
+#         cap[e] = mat[i, j]
 
-    # add source and sink node
-    source_id = nrow + ncol
-    target_id = source_id + 1
-    g.add_vertex(source_id)
-    g.add_vertex(target_id)
-    src = g.vertex(source_id)
-    tgt = g.vertex(target_id)
+#     # add source and sink node
+#     source_id = nrow + ncol
+#     target_id = source_id + 1
+#     g.add_vertex(source_id)
+#     g.add_vertex(target_id)
+#     src = g.vertex(source_id)
+#     tgt = g.vertex(target_id)
 
-    # add direct links from source and to targets
-    for i in range(nrow):
-        g.add_edge(src, g.vertex(i))
-        e = g.edge(src, g.vertex(i))
-        cap[e] = 1
-    for j in range(nrow, nrow+ncol):
-        g.add_edge(g.vertex(j), tgt)
-        e = g.edge(g.vertex(j), tgt)
-        cap[e] = 1
-    g.edge_properties["cap"] = cap
-    # solve problem use max-flow algorithm
-    res = gt.edmonds_karp_max_flow(g, g.vertex(source_id), g.vertex(target_id), cap)
-    res.a = cap.a - res.a  # the actual flow
-    # get maxflow (that is, the number of pairs)
-    max_flow = sum(res[e] for e in g.vertex(target_id).in_edges())
-    # print edges (carpool pairs) found by algorithm
+#     # add direct links from source and to targets
+#     for i in range(nrow):
+#         g.add_edge(src, g.vertex(i))
+#         e = g.edge(src, g.vertex(i))
+#         cap[e] = 1
+#     for j in range(nrow, nrow+ncol):
+#         g.add_edge(g.vertex(j), tgt)
+#         e = g.edge(g.vertex(j), tgt)
+#         cap[e] = 1
+#     g.edge_properties["cap"] = cap
+#     # solve problem use max-flow algorithm
+#     res = gt.edmonds_karp_max_flow(g, g.vertex(source_id), g.vertex(target_id), cap)
+#     res.a = cap.a - res.a  # the actual flow
+#     # get maxflow (that is, the number of pairs)
+#     max_flow = sum(res[e] for e in g.vertex(target_id).in_edges())
+#     # print edges (carpool pairs) found by algorithm
 
-    # init trace back item for each passenger
-    match_reverse = [-1] * ncol
-    for edge in g.edges():
-        edge_in, edge_out = edge
-        # exclude edges with source and sinks
-        if edge_in == source_id or edge_out == target_id:
-            continue
-        if res[edge] > 0:
-            # print(edge_in, edge_out)
-            in_id, out_id = int(edge_in), int(edge_out)
-            out_id = out_id - nrow
-            match_reverse[out_id] = in_id
+#     # init trace back item for each passenger
+#     match_reverse = [-1] * ncol
+#     for edge in g.edges():
+#         edge_in, edge_out = edge
+#         # exclude edges with source and sinks
+#         if edge_in == source_id or edge_out == target_id:
+#             continue
+#         if res[edge] > 0:
+#             # print(edge_in, edge_out)
+#             in_id, out_id = int(edge_in), int(edge_out)
+#             out_id = out_id - nrow
+#             match_reverse[out_id] = in_id
 
-    # should return count_pairs, match_reverse
-    return max_flow, match_reverse
+#     # should return count_pairs, match_reverse
+#     return max_flow, match_reverse

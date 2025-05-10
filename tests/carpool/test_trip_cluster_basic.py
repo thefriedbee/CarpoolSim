@@ -40,12 +40,12 @@ def test_trip_demands():
     print(solo_times)
     print(tt_lst)
     print(dst_lst)
-    assert False
-
-
-
-
-
+    assert True
+    assert len(solo_paths) == len(sample_trips)
+    assert len(solo_dists) == len(sample_trips)
+    assert len(solo_times) == len(sample_trips)
+    assert len(tt_lst) == len(sample_trips)
+    assert len(dst_lst) == len(sample_trips)
 
 
 
