@@ -43,3 +43,31 @@ class TripClusterAbstract(ABC):
     @property
     def network(self):
         return self.td.network
+
+    @abstractmethod
+    def fill_diagonal(self, tt_lst, dst_lst):
+        pass
+
+    @abstractmethod
+    def compute_carpool(self, int_idx1, int_idx2, fixed_role: bool = False, **kwargs):
+        pass
+
+    @abstractmethod
+    def compute_depart_01_matrix_post(self, **kwargs):
+        pass
+
+    @abstractmethod
+    def compute_pickup_01_matrix(self, **kwargs):
+        pass
+
+    @abstractmethod
+    def evaluate_carpool_trips(self, **kwargs):
+        pass
+
+    @abstractmethod
+    def compute_optimal_bipartite(self, **kwargs):
+        pass
+    
+    @abstractmethod
+    def compute_in_one_step(self, **kwargs):
+        pass
