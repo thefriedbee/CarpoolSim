@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from carpoolsim.carpool.trip_filters import *
+from carpoolsim.carpool.util.mat_operations import *
 
 
 def test_get_projected_ods():
