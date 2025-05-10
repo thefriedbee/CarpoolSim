@@ -75,5 +75,11 @@ def test_tdc_compute_optimal_bipartite(trip_demands=trip_demands):
     tdc = TripClusterDC(trip_demands)
     num_pair, pairs = tdc.compute_optimal_bipartite()
     print(f"num_pair: {num_pair}, pairs: {pairs}")
-    assert False
+    assert True
 
+
+def test_tdc_compute_in_one_step(trip_demands=trip_demands):
+    tdc = TripClusterDC(trip_demands)
+    num_pair, pairs = tdc.compute_in_one_step(print_mat=True)
+    print(f"num_pair: {num_pair}, pairs: {pairs}")
+    assert False

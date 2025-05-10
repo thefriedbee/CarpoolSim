@@ -4,6 +4,7 @@ Apply DC carpooling mode to a set of trips.
 import numpy as np
 
 from carpoolsim.carpool.trip_cluster_basic import TripDemands
+from carpoolsim.carpool.util.trip_cluster_dumb import TripClusterAbstract
 from carpoolsim.carpool.util.network_search import (
     get_path_distance_and_tt, 
     dynamic_shortest_path_search
@@ -20,26 +21,9 @@ import carpoolsim.carpool_solver.bipartite_solver as tg
 
 
 # Direct Carpool Mode
-class TripClusterDC:
+class TripClusterDC(TripClusterAbstract):
     def __init__(self, trips: TripDemands):
-        self.td = trips
-        N = len(self.td.trips)
-        # matrices to store travel time and distance considering DC mode
-        self.cp_matrix = np.full((N, N), np.nan, dtype="int8")
-        self.tt_matrix = np.full((N, N),  np.nan, dtype="float32")  # store travel time (minutes) for driver
-        self.ml_matrix = np.full((N, N), np.nan, dtype="float32")  # store travel distance (miles) for driver
-        # A CENTRIC VIEW OF DRIVERS (3 trip segments of a carpool driver)
-        # p1: pickup travel time for driver
-        # p2: shared travel time for driver and passenger
-        # p3: drop-off travel time for driver
-        self.tt_matrix_p1 = np.full((N, N), np.nan, dtype="float32")
-        self.tt_matrix_p2 = np.full((N, N), np.nan, dtype="float32")
-        self.tt_matrix_p3 = np.full((N, N), np.nan, dtype="float32")
-
-    @property
-    def shape(self):
-        # (#rows, #columns)
-        return self.cp_matrix.shape
+        super().__init__(trips)
     
     def fill_diagonal(self, tt_lst, dst_lst):
         # update diagonal cp matrix
@@ -283,19 +267,21 @@ class TripClusterDC:
         Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
         delta: float = 15, gamma: float = 1.5, ita: float = 0.5,
     ) -> tuple[int, list[tuple[int, int]]]:
-        cp_matrix, tt_matrix, ml_matrix = self.cp_matrix, self.tt_matrix, self.ml_matrix
+        # step 0. compute drive alone info
+        self.td.compute_sov_info()
+        tt_lst, dst_lst = self.td.soloTimes, self.td.soloDists
         # step 1. check departure time difference to filter
-        compute_depart_01_matrix_pre(self, Delta1=Delta1)
+        self.cp_matrix = compute_depart_01_matrix_pre(self, Delta1=Delta1)
         # step 2. a set of filter based on Euclidean distance between coordinates
         self.compute_pickup_01_matrix(threshold_dist=dst_max, mu1=mu1, mu2=mu2)
-        # step 3. compute drive alone cases
-        soloPaths, soloTimes, soloDists, tt_lst, dst_lst = self.compute_diagonal()
+        # step 3. fill diagonal with drive alone info
         self.fill_diagonal(tt_lst, dst_lst)
         # step 4. combine all aforementioned filters to generate one big filter
         self.evaluate_carpoolable_trips(reset_off_diag=False)
         if print_mat:
             print("after step 4")
-            print("cp matrix:", cp_matrix.sum())
+            print("cp matrix:", self.cp_matrix.astype(int).sum())
+            print(self.cp_matrix[:8, :8])
         # step 5. filter by the maximum waiting time for the driver at pickup location
         self.compute_depart_01_matrix_post(Delta2=Delta2, Gamma=Gamma)
         # step 6. filter by real computed waiting time (instead of coordinates before)
@@ -304,13 +290,10 @@ class TripClusterDC:
         num_pair, pairs = self.compute_optimal_bipartite()
         if print_mat:
             print("after step 6")
-            print("cp matrix:", cp_matrix.sum())
+            print("cp matrix:", self.cp_matrix.astype(int).sum())
             # print(self.cp_matrix[:8, :8])
-            print("tt matrix:", (tt_matrix > 0).sum())
+            print("tt matrix:", (self.tt_matrix > 0).sum())
             # print(self.tt_matrix[:8, :8])
-            print("ml matrix:", (ml_matrix > 0).sum())
+            print("ml matrix:", (self.ml_matrix > 0).sum())
             # print(self.ml_matrix[:8, :8])
         return num_pair, pairs
-
-
-

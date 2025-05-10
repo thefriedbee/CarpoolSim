@@ -2,6 +2,7 @@ import sqlalchemy
 import networkx as nx
 
 from carpoolsim.database.query_database import query_od_info
+import carpoolsim.basic_settings as bs
 
 
 def get_path_distance_and_tt(network: nx.DiGraph, nodes: list[str]):
