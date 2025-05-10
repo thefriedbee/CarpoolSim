@@ -28,7 +28,7 @@ dict_network = prepare_network()
 sample_trips = trips.iloc[:3].copy()  # use 3 trips to test
 
 
-def test_td_fill_diagonal():
+def prepare_trip_demands():
     trip_demands = TripDemands(
         sample_trips, 
         dict_network['DG'], 
@@ -36,6 +36,11 @@ def test_td_fill_diagonal():
         engine
     )
     trip_demands.compute_sov_info()
+    return trip_demands
+
+
+def test_tdc_fill_diagonal():
+    trip_demands = prepare_trip_demands()
     tdc = TripClusterDC(trip_demands)
     tt_lst = trip_demands.soloTimes
     dst_lst = trip_demands.soloDists
@@ -47,7 +52,23 @@ def test_td_fill_diagonal():
     assert True
 
 
-def test_td_compute_carpool():
+def test_tdc_compute_carpool():
+    trip_demands = prepare_trip_demands()
+    tdc = TripClusterDC(trip_demands)
+    tt_lst = trip_demands.soloTimes
+    dst_lst = trip_demands.soloDists
+    tdc.fill_diagonal(tt_lst, dst_lst)
+    ret1, ret2 = tdc.compute_carpool(0, 1, fixed_role=True)
+    print(tdc.cp_matrix)
+    print(ret1)
+    print(ret2)
+    assert True
+    tdc.compute_depart_01_matrix_post()
+    print(tdc.tt_matrix_p1)
+    assert False
+
+
+def test_tdc_compute_depart_01_matrix_post():
     trip_demands = TripDemands(
         sample_trips, 
         dict_network['DG'], 
@@ -56,11 +77,3 @@ def test_td_compute_carpool():
     )
     trip_demands.compute_sov_info()
     tdc = TripClusterDC(trip_demands)
-    tt_lst = trip_demands.soloTimes
-    dst_lst = trip_demands.soloDists
-    tdc.fill_diagonal(tt_lst, dst_lst)
-    ret1, ret2 = tdc.compute_carpool(0, 1)
-    print(tdc.cp_matrix)
-    print(ret1)
-    print(ret2)
-    assert False

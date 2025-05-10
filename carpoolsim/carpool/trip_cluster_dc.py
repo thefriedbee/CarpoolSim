@@ -28,12 +28,18 @@ class TripClusterDC:
         self.cp_matrix = np.full((N, N), np.nan, dtype="int8")
         self.tt_matrix = np.full((N, N),  np.nan, dtype="float32")  # store travel time (minutes) for driver
         self.ml_matrix = np.full((N, N), np.nan, dtype="float32")  # store travel distance (miles) for driver
+        # A CENTRIC VIEW OF DRIVERS (3 trip segments of a carpool driver)
         # p1: pickup travel time for driver
         # p2: shared travel time for driver and passenger
         # p3: drop-off travel time for driver
         self.tt_matrix_p1 = np.full((N, N), np.nan, dtype="float32")
         self.tt_matrix_p2 = np.full((N, N), np.nan, dtype="float32")
         self.tt_matrix_p3 = np.full((N, N), np.nan, dtype="float32")
+    
+    @property
+    def shape(self):
+        # (#rows, #columns)
+        return self.cp_matrix.shape
     
     def fill_diagonal(self, tt_lst, dst_lst):
         # update diagonal cp matrix
@@ -67,6 +73,7 @@ class TripClusterDC:
         :return: paths and links for the all scenarios (two for now)
         """
         trips = self.td.trips
+        network = self.td.network
         soloDists, soloTimes, soloPaths = self.td.soloDists, self.td.soloTimes, self.td.soloPaths
         trip1, trip2 = trips.iloc[int_idx1, :], trips.iloc[int_idx2, :]
         
@@ -88,7 +95,6 @@ class TripClusterDC:
             :param t2_idx: the index of trip 2
             :param reversed: if False, trip1 is the driver. Otherwise, trip2 is the driver.
             """
-            network = self.td.network
             O1, D1, O2, D2 = trip1['o_node'], trip1['d_node'], trip2['o_node'], trip2['d_node']
             O1_taz, D1_taz, O2_taz, D2_taz = trip1['orig_taz'], trip1['dest_taz'], trip2['orig_taz'], trip2['dest_taz']
             if not reversed:  # O1 ==> O2 ==> D2 ==> D1
@@ -148,17 +154,20 @@ class TripClusterDC:
         :return:
         """
         # step 2. Maximum waiting time for driver is Delta2 (default is 5 minutes)
-        nrow, ncol = self.nrow, self.ncol
+        nrow, ncol = self.shape
+        trips = self.td.trips
+        soloTimes = self.td.soloTimes
+        tt_matrix_p1 = self.tt_matrix_p1
         # driver_lst = np.array(self.trips_front['new_min'].tolist()).reshape((1, -1))  # depart minute
         # for non-simulation with time case, passenger <==> driver have the same scope
-        passenger_lst = np.array(self.trips['new_min'].tolist()).reshape((1, -1))
+        passenger_lst = np.array(trips['new_min'].tolist()).reshape((1, -1))
         # compare departure time difference
-        dri_arr = np.tile(passenger_lst.reshape((-1, 1)), (1, ncol)) + self.tt_matrix_p1
+        dri_arr = np.tile(passenger_lst.reshape((-1, 1)), (1, ncol)) + tt_matrix_p1
         pax_dep = np.tile(passenger_lst.reshape((1, -1)), (nrow, 1))  # depart time difference
         # step 2. Maximum waiting time for driver is Delta2 (default is 10 minutes)
         wait_time_mat = dri_arr - pax_dep  # wait time matrix for driver
         # for post analysis, directly update final cp_matrix
-        passenger_time = np.array([self.soloTimes[i] for i in range(self.ncol)]).reshape(1, -1)
+        passenger_time = np.array([soloTimes[i] for i in range(ncol)]).reshape(1, -1)
         passenger_time = np.tile(passenger_time, (nrow, 1))
         if default_rule:
             # passenger only waits the driver should wait at most Delta2 minutes
@@ -195,8 +204,9 @@ class TripClusterDC:
         The filter holds for all (i,j) pairs with: - (V_O1D1 * V_D2D1) / (V_D2D1 * V_D2D1) < mu2
         :return:
         """
-        nrow, ncol = self.nrow, self.ncol
-        oxs, oys, dxs, dys = get_trip_projected_ods(self.trips)
+        nrow, ncol = self.shape
+        trips = self.td.trips
+        oxs, oys, dxs, dys = get_trip_projected_ods(trips)
         mat_ox, mat_oy, man_o = get_distances_among_coordinates(oxs, oys)
         mat_dx, mat_dy, man_d = get_distances_among_coordinates(dxs, dys)
 
@@ -241,7 +251,7 @@ class TripClusterDC:
             if False, only update based on carpool-able matrix information
         :return: None
         """
-        nrow, ncol = self.nrow, self.ncol
+        nrow, ncol = self.shape
         if reset_off_diag:  # wipe and reset out all off-diagonal values
             temp_diag_tt = self.tt_matrix.diagonal()
             temp_diag_ml = self.ml_matrix.diagonal()

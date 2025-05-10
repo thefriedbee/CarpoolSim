@@ -4,7 +4,7 @@ It contains the most basic project settings at one place to change...
 import os
 import sys
 from pathlib import Path
-
+import sqlalchemy
 # basic path information
 os.environ['project_root'] = Path(__file__).parent.parent.as_posix()
 sys.path.append(os.environ['project_root'])
@@ -52,3 +52,4 @@ CRS = "EPSG:2240"  # this is for Georgia West
 NUM_PROCESSES = 12  # number of multiprocess for parallel computing
 
 DB_URL = f"sqlite:///{os.path.join(os.environ['data_inputs'], 'path_retention1.db')}"
+engine = sqlalchemy.create_engine(DB_URL)

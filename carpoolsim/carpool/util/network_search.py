@@ -18,8 +18,9 @@ def get_path_distance_and_tt(network: nx.DiGraph, nodes: list[str]):
 
 
 def dynamic_shortest_path_search(network: nx.DiGraph, start_node, end_node, start_taz, end_taz):
+    engine = bs.engine
     # step 1. get OD and query the shortest path between OD TAZ centroids.
-    __, __, row_dist, nodes = query_od_info(network, start_taz, end_taz)
+    __, __, row_dist, nodes = query_od_info(engine, start_taz, end_taz)
     # step 2. store graph distances, reset them to zeros for fast compute
     orig_distances = []
     for i in range(len(nodes) - 1):
