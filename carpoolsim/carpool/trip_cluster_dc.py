@@ -25,6 +25,7 @@ class TripClusterDC:
         self.td = trips
         N = len(self.td.trips)
         # matrices to store travel time and distance considering DC mode
+        self.cp_matrix = np.full((N, N), np.nan, dtype="int8")
         self.tt_matrix = np.full((N, N),  np.nan, dtype="float32")  # store travel time (minutes) for driver
         self.ml_matrix = np.full((N, N), np.nan, dtype="float32")  # store travel distance (miles) for driver
         # p1: pickup travel time for driver
@@ -65,7 +66,10 @@ class TripClusterDC:
             If call on COMBINATIONS, set this to False.
         :return: paths and links for the all scenarios (two for now)
         """
-        trip1, trip2 = self.trips.iloc[int_idx1, :], self.trips.iloc[int_idx2, :]
+        trips = self.td.trips
+        soloDists, soloTimes, soloPaths = self.td.soloDists, self.td.soloTimes, self.td.soloPaths
+        trip1, trip2 = trips.iloc[int_idx1, :], trips.iloc[int_idx2, :]
+        
         # part 2 (p2) below is the shared trip between passenger & driver
         # d1_tt_p1, d1_tt_p2, d1_tt_p3 = 0, 0, 0  # pickup, duration, drop-off time for driver 1
         # d1_ml_p1, d1_ml_p2, d1_ml_p3 = 0, 0, 0  # pickup, duration, drop-off mileage for driver 1
@@ -84,19 +88,19 @@ class TripClusterDC:
             :param t2_idx: the index of trip 2
             :param reversed: if False, trip1 is the driver. Otherwise, trip2 is the driver.
             """
-            network = self.network
+            network = self.td.network
             O1, D1, O2, D2 = trip1['o_node'], trip1['d_node'], trip2['o_node'], trip2['d_node']
             O1_taz, D1_taz, O2_taz, D2_taz = trip1['orig_taz'], trip1['dest_taz'], trip2['orig_taz'], trip2['dest_taz']
             if not reversed:  # O1 ==> O2 ==> D2 ==> D1
                 p1, t1, d1 = dynamic_shortest_path_search(network, O1, O2, O1_taz, O2_taz)  # O1->O2
                 # O2->D2, which is already computed (self.compute_diagonal should be called before)
-                d2, p2 = self.soloDists[t2_idx], self.soloPaths[t2_idx]
+                d2, p2 = soloDists[t2_idx], soloPaths[t2_idx]
                 t2, __ = get_path_distance_and_tt(network, p2)
                 p3, t3, d3 = dynamic_shortest_path_search(network, D2, D1, D2_taz, D1_taz)  # D2->D1
             else:  # O2 ==> O1 ==> D1 ==> D2
                 p1, t1, d1 = dynamic_shortest_path_search(network, O2, O1, O2_taz, O1_taz)  # O2->O1
                 # O1->D1, which is already computed (self.compute_diagonal should be called before)
-                d2, p2 = self.soloDists[t1_idx], self.soloPaths[t1_idx]
+                d2, p2 = soloDists[t1_idx], soloPaths[t1_idx]
                 t2, __ = get_path_distance_and_tt(network, p2)
                 p3, t3, d3 = dynamic_shortest_path_search(network, D1, D2, D1_taz, D2_taz)  # D1->D2
             if print_dist:

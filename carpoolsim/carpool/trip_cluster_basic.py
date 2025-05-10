@@ -34,17 +34,15 @@ class TripDemands:
         self.links = links
         self.engine = engine
         # record travel information
-        self.soloPaths = {}  # trip retention of SOV paths
-        self.soloDists = {}  # trip retention of SOV distance
-        self.soloTimes = {}  # trip retention of SOV time
+        self.soloPaths = []  # trip retention of SOV paths
+        self.soloDists = []  # trip retention of SOV distance
+        self.soloTimes = []  # trip retention of SOV time
 
-    def compute_sov_info(self):
+    def compute_sov_info(self) -> None:
         trips = self.trips
         num_trips = len(trips)
         # values to write
-        soloPaths, soloTimes, soloDists = {}, {}, {}
-        integer_idx = 0  # use integer index for SOV trips
-        tt_lst, dst_lst = [], []
+        soloPaths, soloTimes, soloDists = [], [], []
         for idx, trip in trips.iterrows():
             # step 0. prepare OD nodes and OD TAZs
             start_node, end_node = trip['o_node'], trip['d_node']
@@ -52,10 +50,10 @@ class TripDemands:
             pth_nodes, tt, dst = naive_shortest_path_search(
                 self.network, start_node, end_node
             )
-            soloPaths[integer_idx] = pth_nodes
-            soloTimes[integer_idx] = tt
-            soloDists[integer_idx] = dst
-            tt_lst.append(round(tt, 2))
-            dst_lst.append(round(dst, 2))
-            integer_idx += 1
-        return soloPaths, soloTimes, soloDists, tt_lst, dst_lst
+            soloPaths += [pth_nodes]
+            soloTimes += [round(tt, 2)]
+            soloDists += [round(dst, 2)]
+        # save results to object
+        self.soloPaths = soloPaths
+        self.soloTimes = soloTimes
+        self.soloDists = soloDists

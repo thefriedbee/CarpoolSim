@@ -4,20 +4,6 @@ import networkx as nx
 from carpoolsim.database.query_database import query_od_info
 
 
-# connect to database and quickly check OD shortest path
-def query_od_info(engine: sqlalchemy.Engine, o_taz: str | int, d_taz: str | int):
-    """
-    # returned: origin ID, destination ID, distance, path used
-    :param o_taz: origin TAZ
-    :param d_taz: destination TAZ
-    :return:
-    """
-    results = query_od_info(engine=engine, o_taz=o_taz, d_taz=d_taz)
-    row_dist = results[2]
-    row_path = results[3]
-    return str(o_taz), str(d_taz), row_dist, row_path
-
-
 def get_path_distance_and_tt(network: nx.DiGraph, nodes: list[str]):
     """
     A helper function to get driving path given a set of network nodes.
@@ -54,7 +40,6 @@ def naive_shortest_path_search(network: nx.DiGraph, start_node, end_node):
     __, pth_nodes = nx.single_source_dijkstra(network, str(start_node), str(end_node), weight='forward')
     tt, dst = get_path_distance_and_tt(network, pth_nodes)
     return pth_nodes, tt, dst
-
 
 
 
