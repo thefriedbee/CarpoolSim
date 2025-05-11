@@ -29,16 +29,11 @@ def compute_depart_01_matrix_pre(
     # compare departure time difference
     mat = np.tile(depart_lst.transpose(), (1, ncol))
     mat = np.tile(depart_lst, (nrow, 1)) - mat  # depart time difference (driver's depart - pax depart)
+    cp_matrix = (cp_matrix &
+                 (np.absolute(mat) <= Delta1)).astype(np.bool_)
+    # default rule: driver should depart earlier (no later) than passenger
     if default_rule:
-        # condition 1. passenger should arrive earlier than the driver, plus
-        # condition 2. only the driver start no later than Delta1 minutes after passenger leaves
-        cp_matrix = (cp_matrix &
-                     (mat >= 0) &
-                     (np.absolute(mat) <= Delta1)).astype(np.bool_)
-    else:
-        # condition 1. passenger/driver depart time within +/- Delta1 minutes
-        cp_matrix = (cp_matrix &
-                     (np.absolute(mat) <= Delta1)).astype(np.bool_)
+        cp_matrix = cp_matrix & (mat >= 0)
     return cp_matrix
 
 

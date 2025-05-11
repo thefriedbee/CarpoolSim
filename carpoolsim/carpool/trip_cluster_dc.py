@@ -135,6 +135,7 @@ class TripClusterDC(TripClusterAbstract):
         trips = self.td.trips
         soloTimes = self.td.soloTimes
         tt_matrix_p1 = self.tt_matrix_p1
+        cp_matrix = self.cp_matrix
         # driver_lst = np.array(self.trips_front['new_min'].tolist()).reshape((1, -1))  # depart minute
         # for non-simulation with time case, passenger <==> driver have the same scope
         passenger_lst = np.array(trips['new_min'].tolist()).reshape((1, -1))
@@ -146,16 +147,14 @@ class TripClusterDC(TripClusterAbstract):
         # for post analysis, directly update final cp_matrix
         passenger_time = np.array([soloTimes[i] for i in range(ncol)]).reshape(1, -1)
         passenger_time = np.tile(passenger_time, (nrow, 1))
+
+        cp_matrix = (cp_matrix &
+                     (np.absolute(wait_time_mat) <= Delta2) &
+                     (np.absolute(wait_time_mat/passenger_time) <= Gamma)).astype(np.bool_)
         if default_rule:
             # passenger only waits the driver should wait at most Delta2 minutes
-            self.cp_matrix = (self.cp_matrix &
-                              (wait_time_mat >= 0) & (np.absolute(wait_time_mat) <= Delta2) &
-                              (np.absolute(wait_time_mat/passenger_time) <= Gamma)).astype(np.bool_)
-        else:
-            # passenger/driver waits the other party for at most Delta2 minutes
-            self.cp_matrix = (self.cp_matrix &
-                              (np.absolute(wait_time_mat) <= Delta2) &
-                              (np.absolute(wait_time_mat/passenger_time) <= Gamma)).astype(np.bool_)
+            cp_matrix = (cp_matrix & (wait_time_mat >= 0)).astype(np.bool_)
+        self.cp_matrix = cp_matrix
 
     def compute_pickup_01_matrix(
         self,
@@ -260,33 +259,40 @@ class TripClusterDC(TripClusterAbstract):
         Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
         delta: float = 15, gamma: float = 1.5, ita: float = 0.5,
     ) -> tuple[int, list[tuple[int, int]]]:
-        # step 0. compute drive alone info
+        # step 1. compute drive alone info
         self.td.compute_sov_info()
         tt_lst, dst_lst = self.td.soloTimes, self.td.soloDists
-        # step 1. check departure time difference to filter
-        self.cp_matrix = compute_depart_01_matrix_pre(self, Delta1=Delta1)
-        # step 2. a set of filter based on Euclidean distance between coordinates
-        self.compute_pickup_01_matrix(threshold_dist=dst_max, mu1=mu1, mu2=mu2)
-        # step 3. fill diagonal with drive alone info
         self.fill_diagonal(tt_lst, dst_lst)
+        self._print_matrix(step=1, print_mat=print_mat)
+
+        # step 2. check departure time difference to filter
+        self.cp_matrix = compute_depart_01_matrix_pre(self, Delta1=Delta1)
+        self._print_matrix(step=2, print_mat=print_mat)
+
+        # step 3. a set of filter based on Euclidean distance between coordinates
+        self.compute_pickup_01_matrix(threshold_dist=dst_max, mu1=mu1, mu2=mu2)
+        self._print_matrix(step=3, print_mat=print_mat)
+
         # step 4. combine all aforementioned filters to generate one big filter
         self.evaluate_carpoolable_trips(reset_off_diag=False)
-        if print_mat:
-            print("after step 4")
-            print("cp matrix:", self.cp_matrix.astype(int).sum())
-            print(self.cp_matrix[:8, :8])
+        self._print_matrix(step=4, print_mat=print_mat)
+
         # step 5. filter by the maximum waiting time for the driver at pickup location
         self.compute_depart_01_matrix_post(Delta2=Delta2, Gamma=Gamma)
+        self._print_matrix(step=5, print_mat=print_mat)
+
         # step 6. filter by real computed waiting time (instead of coordinates before)
         self = compute_reroute_01_matrix(self, delta=delta, gamma=gamma, ita=ita)
+        self._print_matrix(step=6, print_mat=print_mat)
+
         # step 7. compute optimal bipartite pairing
         num_pair, pairs = self.compute_optimal_bipartite()
-        if print_mat:
-            print("after step 6")
-            print("cp matrix:", self.cp_matrix.astype(int).sum())
-            # print(self.cp_matrix[:8, :8])
-            print("tt matrix:", (self.tt_matrix > 0).sum())
-            # print(self.tt_matrix[:8, :8])
-            print("ml matrix:", (self.ml_matrix > 0).sum())
-            # print(self.ml_matrix[:8, :8])
+        self._print_matrix(step=7, print_mat=print_mat)
         return num_pair, pairs
+
+    def _print_matrix(self, step: int = 0, print_mat: bool = False):
+        if not print_mat:
+            return
+        print(f"after step {step}")
+        print("cp matrix:", self.cp_matrix.astype(int).sum())
+        print(self.cp_matrix[:8, :8])

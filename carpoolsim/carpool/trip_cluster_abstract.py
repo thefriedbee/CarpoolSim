@@ -17,7 +17,8 @@ class TripClusterAbstract(ABC):
         self.td = trip_demands
         N = len(self.trips)
         # matrices to store travel time and distance considering DC mode
-        self.cp_matrix = np.full((N, N), np.nan, dtype="int8")
+        # all combinations are carpoolable in the beginning
+        self.cp_matrix = np.full((N, N), 1, dtype="int8")
         self.tt_matrix = np.full((N, N), np.nan, dtype="float32")
         self.ml_matrix = np.full((N, N), np.nan, dtype="float32")
         # A CENTRIC VIEW OF DRIVERS (3 trip segments of a carpool driver)

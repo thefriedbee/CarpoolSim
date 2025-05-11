@@ -60,4 +60,3 @@ def preprocess_trips(
         axis=1, df_nodes=df_nodes, mode="dest"
     )
     return trips
-

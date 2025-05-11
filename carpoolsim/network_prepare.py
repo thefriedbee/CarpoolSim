@@ -145,8 +145,8 @@ def add_xy(
 ) -> pd.DataFrame:
     """
     Given (lat, lon) information, generate coordinates in local projection system
-        Also, classify location into different categories using a grid and store the
-        row and column it falls into.
+        Also, classify location into different categories using grids and 
+        store the row and column the point falls into.
     """
     crs = {'init': 'epsg:4326', 'no_defs': True}  # NAD83: EPSG 4326
     geometry = [Point(xy) for xy in zip(df[lon], df[lat])]
