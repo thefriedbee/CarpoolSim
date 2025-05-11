@@ -7,7 +7,7 @@ from shapely.geometry import Point
 import networkx as nx
 
 import carpoolsim.basic_settings as bs
-
+import carpoolsim.carpool.util as ut
 warnings.filterwarnings('ignore')
 
 
@@ -250,6 +250,20 @@ def point_to_node(
     return df_points
 
 
+def pnr_filter_within_TAZs(
+    pnr_lots: gpd.GeoDataFrame,
+    tazs: gpd.GeoDataFrame,
+) -> pd.DataFrame:
+    # for each point, search if it is contained in polygon
+    pnr_lots['taz'] = pnr_lots['geometry'].apply(ut.get_taz, tazs=tazs)
+
+    filt = (pnr_lots.taz != -1)
+    num_lots = pnr_lots.shape[0]
+    print(f"Filtered {num_lots - filt.sum()} points out of {num_lots} (because they are not in any TAZ polygon)")
+    pnr_lots = pnr_lots.loc[filt, :].copy()
+    return pnr_lots
+
+
 def pnr_pre_process(
         pnr_lots: gpd.GeoDataFrame,
         dict_settings: dict,
@@ -288,4 +302,3 @@ def pnr_pre_process(
         }
     )
     return df_points
-

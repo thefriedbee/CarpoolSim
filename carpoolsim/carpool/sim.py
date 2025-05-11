@@ -1,19 +1,26 @@
 """
 Classes for running the simulation.
 """
-from carpoolsim.carpool.trip_demands import TripDemands
+import pandas as pd
+
+from carpoolsim.carpool.trip_demands import TripDemands, Infrastructure
 from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
 
 
 class Simulation:
     def __init__(
-            self, 
-            trip_demands: TripDemands,
-            # list of classes, not instances!
-            trip_clusters: list[TripClusterAbstract],
+        self, 
+        infrastructure: Infrastructure,
+        trips: pd.DataFrame,
+        # list of classes, not instances!
+        carpool_types: list[TripClusterAbstract],
     ):
-        self.trip_demands = trip_demands
-        self.trip_clusters = trip_clusters
+        self.infrastructure = infrastructure
+        self.trips = trips
+        self.carpool_types = carpool_types
+        # unit: minute of the simulation day
+        self.t0 = 0
+        self.delta_t = 1
 
     def init_clusters(self, trip_demands: TripDemands):
         tcs = []
