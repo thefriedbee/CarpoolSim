@@ -47,12 +47,12 @@ def test_get_distances_among_coordinates():
     assert np.all(mat_dy == mat_dy_result)
 
 
-def test_get_distances_between_ods():
+def test_get_distances_between_ods_matrix():
     oxs = np.array([1, 2, 3])
     oys = np.array([1, 2, 3])
     dxs = np.array([4, 5])
     dys = np.array([4, 5])
-    mat_dx, mat_dy, mat_dist = get_distances_between_ods(oxs, oys, dxs, dys)
+    mat_dx, mat_dy, mat_dist = get_distances_between_ods_matrix(oxs, oys, dxs, dys)
     assert mat_dx.shape == (3, 2)
     assert mat_dy.shape == (3, 2)
     assert mat_dist.shape == (3, 2)

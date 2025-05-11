@@ -21,11 +21,11 @@ def generate_pnr_trip_map_filt(
     :return:
     """
     trips = trip_cluster.trips
-    pnr_01_matrix = trip_cluster.pnr_01_matrix
+    pnr_matrix = trip_cluster.pnr_matrix
     pnr_access_info = trip_cluster.pnr_access_info
-    soloTimes = trip_cluster.soloTimes
+    soloTimes = trip_cluster.td.soloTimes
     # return all indicies with value 1
-    ind = np.argwhere(pnr_01_matrix == 1)
+    ind = np.argwhere(pnr_matrix == 1)
     # print('pnr trip map filt:', ind)
     for ind_one in ind:
         trip_id, station_id = ind_one
@@ -37,7 +37,7 @@ def generate_pnr_trip_map_filt(
         # if not possible to access PNR station in time,
         # change access pnr matrix information
         if (t_all - t2) >= delta or t_all / (t2+0.1) >= gamma:
-            pnr_01_matrix[trip_id, station_id] = 0
+            pnr_matrix[trip_id, station_id] = 0
             # self.pnr_access_info[trip_id, station_id] = None
             continue
         # store station info to the list (could be multiple accessible PNR stations)
@@ -48,13 +48,13 @@ def generate_pnr_trip_map_filt(
 
     # print new filtered results
     # finally, prepare the big 0-1 matrix between travelers
-    temp_cp_pnr_matrix = ((pnr_01_matrix @ pnr_01_matrix.T) > 0).astype(np.bool_)
-    n_rows = trip_cluster.cp_pnr_matrix.shape[0]
-    cp_pnr_matrix = (
-        trip_cluster.cp_pnr_matrix &
-        temp_cp_pnr_matrix[:n_rows, :]).astype(np.bool_)
+    temp_cp_matrix = ((pnr_matrix @ pnr_matrix.T) > 0).astype(np.bool_)
+    n_rows = trip_cluster.cp_matrix.shape[0]
+    cp_matrix = (
+        trip_cluster.cp_matrix &
+        temp_cp_matrix[:n_rows, :]).astype(np.bool_)
     
-    trip_cluster.cp_pnr_matrix = cp_pnr_matrix
+    trip_cluster.cp_matrix = cp_matrix
     return trip_cluster
 
 
@@ -106,7 +106,7 @@ def compute_reroute_01_matrix_pnr(
     trip_cluster,
     delta: float = 15,
     gamma: float = 1.5,
-    ita_pnr: float = 0.5,
+    ita: float = 0.5,
     print_mat: bool = True
 ):
     """
@@ -114,7 +114,7 @@ def compute_reroute_01_matrix_pnr(
     This cannot be estimated before travel time matrix (self.tt_matrix) is fully computed
     :param delta: maximum reroute time (in minutes) acceptable for the driver
     :param gamma: the maximum ratio of extra travel time over driver's original travel time
-    :param ita_pnr: the ratio between passenger's travel time and driver's travel time should be greater than ita
+    :param ita: the ratio between passenger's travel time and driver's travel time should be greater than ita
     :return:
     """
     # unload parameters...
@@ -138,9 +138,9 @@ def compute_reroute_01_matrix_pnr(
     cp_reroute_ratio_matrix2 = ((tt_pnr_matrix / np.tile(passenger_alone_tt, (nrow, 1)))
                                 <= gamma).astype(bool)
     cp_reroute_ratio_matrix = cp_reroute_ratio_matrix1 & cp_reroute_ratio_matrix2
-    # condition 3: rider should at least share ita_pnr of the total travel time
+    # condition 3: rider should at least share ita of the total travel time
     cp_time_similarity = ((tt_pnr_matrix_shared[:nrow, :ncol] / tt_pnr_matrix)
-                            >= ita_pnr).astype(bool)
+                            >= ita).astype(bool)
     # condition 4: after drop-off time / whole travel time?
     if print_mat:
         # print("drive alone...")

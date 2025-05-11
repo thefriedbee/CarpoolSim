@@ -12,7 +12,8 @@ from carpoolsim.carpool.util.network_search import (
 from carpoolsim.carpool.util.mat_operations import (
     get_trip_projected_ods,
     get_pnr_xys,
-    get_distances_among_coordinates,
+    get_distances_between_ods_sov,
+    get_distances_between_ods_matrix,
 )
 from carpoolsim.carpool.util.filters_pnr import (
     generate_pnr_trip_map_filt,
@@ -119,20 +120,18 @@ class TripClusterPNR(TripClusterAbstract):
         self,
         threshold_dist: float = 5280 * 5,
         mu1: float = 1.3,
-        mu2: float = 0.3,
-        use_mu2: bool =True,
         trips: pd.DataFrame | None =None,
-        print_mat: bool = True,
+        print_mat: bool = True
     ):
         """
-        For each trip, compute the parking lots that can be used as the "meetings point" for carpooled trip.
-        part 1. Use Euclidean distance between coordinates
-        part 2. check precise travel time & distance passing stations (implemented in another function)
+        For each trip, compute the parking lots that can be used as the PNR "meetings point" for carpooled trip.
+        step 1 (this function). Use Euclidean distance between coordinates
+        step 2. check actual travel time & distance (compute_01_matrix_to_station_p2)
 
-        Assume trip starting from O1 and ending at D1, consider stop at M1 for a midterm stop
+        Assume trip's ODs are O1 and D1, consider stop at M1 for a middle PNR station.
+        The following conditions should be satisfied (in Euclidean distance):
         1. O1-->M1 is within 5 miles
         2. (O1 M1) + (M1 D1) < p1 * (O1 D1)
-        3. (O1 D1) / [(O1 M1) + (M1 D1)] < p2 * (O1 D1)
         Notice: all above measures in Euclidean distance between coordinates
         :param threshold_dist: PNR should be relatively close at home
         :param mu1: maximum reroute ratio
@@ -145,36 +144,31 @@ class TripClusterPNR(TripClusterAbstract):
         # nrow: num of drivers; ncol: num of passengers
         num_driver, num_all, lots_ncol = self.nrow, self.ncol, self.pnr_ncol
         oxs, oys, dxs, dys = get_trip_projected_ods(trips)
-        # positions of the parking lots (mxs: middle x coordinates, mys: middle y coordinates)
+        # positions of the parking lots 
+        # (mxs: middle x coordinates, mys: middle y coordinates)
         mxs, mys = get_pnr_xys(self.parking_lots)
 
-        # origin distance between trip origin and parking lots (vectorized)
-        mat_om_dx, mat_om_dy, man_od = get_distances_among_coordinates(oxs, oys)
-        mat_md_dx, mat_md_dy, man_om = get_distances_among_coordinates(dxs, dys)
-        # original distance from o to d for each trip
-        mat_od_dx, mat_od_dy, man_md = get_distances_among_coordinates(oxs, dxs)
+        # SOV case
+        #   distance of O1 --> D1
+        mat_od_dx, mat_od_dy, man_od = get_distances_between_ods_sov(oxs, oys, dxs, dys)
+        # PNR case (stop by M1)
+        #   distance of O1 --> M1
+        mat_om_dx, mat_om_dy, man_om = get_distances_between_ods_matrix(oxs, oys, mxs, mys)
+        #   distance of M1 --> D1 (not the order of inputs are reversed to match the shapes above)
+        mat_md_dx, mat_md_dy, man_md = get_distances_between_ods_matrix(dxs, dys, mxs, mys)   
 
         # compute reroute distance using pnr facility
-        post_dist = (man_om + man_md)
         pre_dist = man_od.reshape(-1, 1)
+        post_dist = (man_om + man_md)
         mat_ratio = (post_dist / pre_dist).astype("float32")
+
+        self.pnr_matrix = (self.pnr_matrix &
+                           (mat_ratio < mu1) &
+                           (man_om <= threshold_dist))
         if print_mat:
             print("mat_ratio total pass is:", (mat_ratio < mu1).sum())
             print("man_om total pass is:", (man_om <= threshold_dist).sum())
-            self.pnr_matrix = (self.pnr_matrix &
-                               (mat_ratio < mu1) &
-                               (man_om <= threshold_dist))
             print("pnr 0-1 matrix total pass is: (after basic euclidean filters)", self.pnr_matrix.sum())
-        if use_mu2:
-            # now it is time for implementing backward constraint
-            # compute the vector for all drivers V_{O1D1}
-            part1 = -(mat_om_dx * mat_md_dx) + (mat_om_dy * mat_md_dy)
-            part2 = (mat_om_dx * mat_md_dx) + (mat_om_dy * mat_md_dy)
-            backward_index = part1 / part2
-            self.pnr_matrix = (self.pnr_matrix &
-                               (backward_index <= mu2)).astype(np.bool_)
-            if print_mat:
-                print("pnr 0-1 matrix total pass is (after mu2 filter):", self.pnr_matrix.sum())
 
     def compute_01_matrix_to_station_p2(
         self,
@@ -182,7 +176,8 @@ class TripClusterPNR(TripClusterAbstract):
         gamma: float = 1.5,
     ) -> None:
         """
-        Make sure each SOV trip can go through PNR station without too much extra costs
+        Make sure each SOV trip can go through PNR station without too much extra costs.
+        step 2. check actual travel time & distance
         :param delta: maximum reroute time (in minutes) acceptable for the driver
         :param gamma: the maximum ratio of extra travel time over driver's original travel time
         :return:
@@ -311,26 +306,11 @@ class TripClusterPNR(TripClusterAbstract):
         for index in indexes_pairs:
             self.compute_carpool_pnr(index[0], index[1], fixed_role=True)
 
-    def compute_pickup_01_matrix(
-        self,
-        threshold_dist: float = 5280 * 5,
-        mu1: float = 1.5,
-        mu2: float = 0.1,
-        use_mu2: bool = True,
-    ):
-        pass
-
-    def evaluate_carpool_trips(self, **kwargs):
-        pass
-
-    def compute_optimal_bipartite(self, **kwargs):
-        pass
-
     def compute_in_one_step(
         self, mu1: float = 1.3, mu2: float = 0.1, dst_max: float = 5 * 5280,
         Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
-        delta: float = 15, gamma: float =1.5, ita: float = 0.8, ita_pnr: float = 0.5,
-        include_direct: bool = True, print_mat: bool = True,
+        delta: float = 15, gamma: float =1.5, ita: float = 0.5,
+        print_mat: bool = True,
     ):
         """
         For the park and ride case, use the same set of filtering parameters for normal case (6 steps).
@@ -344,13 +324,6 @@ class TripClusterPNR(TripClusterAbstract):
         tt_lst, dst_lst = self.td.soloTimes, self.td.soloDists
         self.fill_diagonal(tt_lst, dst_lst)
 
-        if include_direct:
-            self.compute_in_one_step(
-                print_mat=False, skip_combine=True,  # combine modes later
-                mu1=mu1, mu2=mu2, dst_max=dst_max,
-                Delta1=Delta1, Delta2=Delta2, Gamma=Gamma,  # for depart diff and wait time
-                delta=delta, gamma=gamma, ita=ita
-            )
         # step 1. a set of filter based on euclidean distance between coordinates
         # (driver to station)
         self.compute_01_matrix_to_station_p1(
@@ -358,9 +331,7 @@ class TripClusterPNR(TripClusterAbstract):
             trips=self.trips, use_mu2=True, print_mat=print_mat
         )
         # step 2 make sure each SOV trip can travel through PNR
-        # Note: filter by the passenger's before after traveling time (just as those for passengers)
-        #  the above task should be cleverly done in step 2.
-        # filter by precise path traveling distance
+        # Note: filter by the passenger's before after traveling TIME
         self.compute_01_matrix_to_station_p2(delta=15, gamma=1.5)
         # step 3. check departure time difference to filter (for all reasonable pnr stations)
         # this may filter out useful matches for PNR mode
@@ -390,19 +361,12 @@ class TripClusterPNR(TripClusterAbstract):
         # step 6. filter by real computed waiting time (instead of coordinates before)
         self = compute_reroute_01_matrix_pnr(
             trip_cluster=self,
-            delta=delta, gamma=gamma, ita_pnr=ita_pnr,
+            delta=delta, gamma=gamma, ita_pnr=ita,
             print_mat=print_mat
         )
         if print_mat:
             print("cp_matrix (after step 6):", self.cp_matrix.sum())
             print(self.cp_matrix[:8, :8])
-        # step 7. combine direct carpool and park and ride carpool
-        self.combine_pnr_carpool(include_direct, print_mat=print_mat)
-        if print_mat:
-            print("cp matrix (after step 7):", self.cp_matrix.sum())
-            print(self.cp_matrix[:8, :8])
-            print("combined matrix (after step 7):", self.cp_matrix_all.sum())
-            print(self.cp_matrix_all[:8, :8])
 
 
 

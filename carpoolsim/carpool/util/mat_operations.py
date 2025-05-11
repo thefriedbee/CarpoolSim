@@ -56,7 +56,27 @@ def get_distances_among_coordinates(
     return mat_dx, mat_dy, mat_dist
 
 
-def get_distances_between_ods(
+def get_distances_between_ods_sov(
+    oxs: np.ndarray,
+    oys: np.ndarray,
+    dxs: np.ndarray,
+    dys: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Get the distance matrix among N travelers.
+    """
+    oxs, oys, dxs, dys = arrs2vec([oxs, oys, dxs, dys])
+    N = oxs.shape[1]
+    # assure lengths are all the same
+    assert oxs.shape == oys.shape == dxs.shape == dys.shape
+    # not matrix operation, just vector operation for sov case
+    mat_dx = np.abs(oxs - dxs)
+    mat_dy = np.abs(oys - dys)
+    mat_dist = np.sqrt(mat_dx ** 2 + mat_dy ** 2)
+    return mat_dx, mat_dy, mat_dist
+
+
+def get_distances_between_ods_matrix(
     oxs: np.ndarray,
     oys: np.ndarray,
     dxs: np.ndarray,
