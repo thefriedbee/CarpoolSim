@@ -43,7 +43,7 @@ def plot_single_trip(
             for i in range(2)]
     
     network_df = network_df.to_crs("3857")
-    dists_1, links_1, dists_2, links_2 = self.compute_carpool(
+    dists_1, links_1, dists_2, links_2 = trip_cluster.compute_carpool(
         intind1, intind2,
         print_dist=False, fill_mat=False
     )
