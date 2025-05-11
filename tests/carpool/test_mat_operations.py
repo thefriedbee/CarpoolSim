@@ -32,19 +32,19 @@ def test_get_projected_ods():
 def test_get_distances_among_coordinates():
     xs = np.array([1, 2, 3])
     ys = np.array([1, 2, 3])
-    mat_x, mat_y, mat_dist = get_distances_among_coordinates(xs, ys)
+    mat_dx, mat_dy, mat_dist = get_distances_among_coordinates(xs, ys)
 
-    mat_y_result = mat_x_result = np.array([
+    mat_dy_result = mat_dx_result = np.array([
         [0, 1, 2],
         [1, 0, 1],
         [2, 1, 0],
     ])
-    print(mat_x)
-    assert mat_x.shape == (3, 3)
-    assert mat_y.shape == (3, 3)
+    print(mat_dx)
+    assert mat_dx.shape == (3, 3)
+    assert mat_dy.shape == (3, 3)
     assert mat_dist.shape == (3, 3)
-    assert np.all(mat_x == mat_x_result)
-    assert np.all(mat_y == mat_y_result)
+    assert np.all(mat_dx == mat_dx_result)
+    assert np.all(mat_dy == mat_dy_result)
 
 
 
