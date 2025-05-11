@@ -8,13 +8,13 @@ import matplotlib.patches as mpatches
 from matplotlib_scalebar.scalebar import ScaleBar
 import contextily as cx
 
-from carpoolsim.carpool.trip_cluster import TripCluster
+from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
 from carpoolsim.visualization.carpool_viz_seq import plot_seq
 plt.rcParams.update({'font.size': 22})
 
 
 def plot_single_trip(
-    trip_cluster,
+    trip_cluster: TripClusterAbstract,
     intind1: str, intind2: str,
     network_df: pd.DataFrame,
     fixed_role: bool = False,

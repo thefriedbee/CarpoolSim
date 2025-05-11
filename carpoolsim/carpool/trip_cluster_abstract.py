@@ -4,7 +4,7 @@ Use a parent class to avoid cyclic import
 from abc import ABC, abstractmethod
 import numpy as np
 
-from carpoolsim.carpool.trip_cluster_basic import TripDemands
+from carpoolsim.carpool.trip_demands import TripDemands
 
 
 class TripClusterAbstract(ABC):

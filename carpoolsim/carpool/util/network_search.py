@@ -1,4 +1,3 @@
-import sqlalchemy
 import networkx as nx
 
 from carpoolsim.database.query_database import query_od_info
