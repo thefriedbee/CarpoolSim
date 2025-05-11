@@ -12,7 +12,6 @@ import sqlalchemy
 
 import carpoolsim.carpool_solver.bipartite_solver as tg
 from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
-from carpoolsim.carpool.trip_demands import TripDemands
 from carpoolsim.carpool.util.network_search import (
     get_path_distance_and_tt, 
     dynamic_shortest_path_search,
