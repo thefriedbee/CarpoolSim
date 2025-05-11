@@ -11,7 +11,7 @@ import networkx as nx
 import sqlalchemy
 
 import carpoolsim.carpool_solver.bipartite_solver as tg
-from carpoolsim.carpool.util.trip_cluster_dumb import TripClusterAbstract
+from carpoolsim.carpool.util.trip_cluster_abstract import TripClusterAbstract
 from carpoolsim.carpool.trip_cluster_basic import TripDemands
 from carpoolsim.carpool.util.network_search import (
     get_path_distance_and_tt, 
@@ -38,6 +38,7 @@ from carpoolsim.carpool.util.filters_dc import (
     compute_reroute_01_matrix
 )
 from carpoolsim.carpool.util.filters_pnr import (
+    generate_pnr_trip_map_filt,
     compute_depart_01_matrix_pre_pnr,
     compute_reroute_01_matrix_pnr,
     compute_depart_01_matrix_post_pnr
