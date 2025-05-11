@@ -42,13 +42,11 @@ class TripDemands:
 
     def compute_sov_info(self) -> None:
         trips = self.trips
-        num_trips = len(trips)
-        # values to write
         soloPaths, soloTimes, soloDists = [], [], []
+        # search traveling paths for each trip
         for idx, trip in trips.iterrows():
-            # step 0. prepare OD nodes and OD TAZs
             start_node, end_node = trip['o_node'], trip['d_node']
-            start_taz, end_taz = trip['orig_taz'], trip['dest_taz']
+            # start_taz, end_taz = trip['orig_taz'], trip['dest_taz']
             pth_nodes, tt, dst = naive_shortest_path_search(
                 self.network, start_node, end_node
             )
