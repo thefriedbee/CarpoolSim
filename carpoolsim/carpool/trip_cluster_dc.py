@@ -289,10 +289,3 @@ class TripClusterDC(TripClusterAbstract):
         num_pair, pairs = self.compute_optimal_bipartite()
         self._print_matrix(step=7, print_mat=print_mat)
         return num_pair, pairs
-
-    def _print_matrix(self, step: int = 0, print_mat: bool = False):
-        if not print_mat:
-            return
-        print(f"after step {step}")
-        print("cp matrix:", self.cp_matrix.astype(int).sum())
-        print(self.cp_matrix[:8, :8].astype(int))

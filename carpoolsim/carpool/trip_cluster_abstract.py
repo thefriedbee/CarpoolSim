@@ -51,9 +51,7 @@ class TripClusterAbstract(ABC):
         return self.td.network
 
     def fill_diagonal(self, tt_lst, dst_lst):
-        # update diagonal cp matrix
         np.fill_diagonal(self.cp_matrix, 1)
-        # update tt matrix and ml matrix
         np.fill_diagonal(self.tt_matrix, tt_lst)
         np.fill_diagonal(self.ml_matrix, dst_lst)
 
@@ -64,3 +62,10 @@ class TripClusterAbstract(ABC):
     @abstractmethod
     def compute_in_one_step(self, **kwargs):
         pass
+
+    def _print_matrix(self, step: int = 0, print_mat: bool = False):
+        if not print_mat:
+            return
+        print(f"after step {step}")
+        print("cp matrix:", self.cp_matrix.astype(int).sum())
+        print(self.cp_matrix[:8, :8].astype(int))
