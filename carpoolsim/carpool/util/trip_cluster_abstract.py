@@ -10,11 +10,11 @@ from carpoolsim.carpool.trip_cluster_basic import TripDemands
 class TripClusterAbstract(ABC):
     def __init__(
         self,
-        trips: TripDemands,
+        trip_demands: TripDemands,
     ):
         # only store the trips information,
         # most other functions (e.g, query paths) are "outsourced" to free functions
-        self.trips = trips
+        self.td = trip_demands
         N = len(self.trips)
         # matrices to store travel time and distance considering DC mode
         self.cp_matrix = np.full((N, N), np.nan, dtype="int8")
@@ -58,22 +58,6 @@ class TripClusterAbstract(ABC):
 
     @abstractmethod
     def compute_carpool(self, int_idx1, int_idx2, fixed_role: bool = False, **kwargs):
-        pass
-
-    @abstractmethod
-    def compute_depart_01_matrix_post(self, **kwargs):
-        pass
-
-    @abstractmethod
-    def compute_pickup_01_matrix(self, **kwargs):
-        pass
-
-    @abstractmethod
-    def evaluate_carpool_trips(self, **kwargs):
-        pass
-
-    @abstractmethod
-    def compute_optimal_bipartite(self, **kwargs):
         pass
     
     @abstractmethod

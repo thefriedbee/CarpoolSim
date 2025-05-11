@@ -26,11 +26,11 @@ import carpoolsim.carpool_solver.bipartite_solver as tg
 class TripClusterPNR(TripClusterAbstract):
     def __init__(
         self, 
-        trips: TripDemands
+        trip_demands: TripDemands
     ):
-        super().__init__(trips)
+        super().__init__(trip_demands)
         pnr_ncol = len(self.parking_lots)
-        N = len(self.trips)
+        N = len(self.td.trips)
         self.pnr_matrix = np.full((N, pnr_ncol), 1).astype(np.bool_)
         # store all info in one matrix of objects
         self.pnr_access_info = np.empty((N, pnr_ncol), dtype=object)
@@ -47,6 +47,18 @@ class TripClusterPNR(TripClusterAbstract):
     @property
     def pnr_ncol(self):
         return len(self.parking_lots)
+    
+    @property
+    def trips(self):
+        return self.td.trips
+    
+    @property
+    def parking_lots(self):
+        return self.td.parking_lots
+    
+    @property
+    def network(self):
+        return self.td.network
     
     def compute_pnr_access(self, trip_id: int, station_id: int) -> None:
         """

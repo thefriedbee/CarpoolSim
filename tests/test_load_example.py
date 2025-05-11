@@ -50,8 +50,13 @@ trips[["dx", "dy", "d_node"]] = trips.apply(
     ut.get_xy,
     axis=1, df_nodes=df_nodes, mode="dest"
 )
+
 pnr_lots['taz'] = pnr_lots['geometry'].apply(
     ut.get_taz, tazs=tazs
+)
+pnr_lots[['x', 'y', 'node']] = pnr_lots.apply(
+    ut.get_xy_pnr,
+    axis=1, df_nodes=df_nodes
 )
 
 print("Finished preprocess dataframes")
