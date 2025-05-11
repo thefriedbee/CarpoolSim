@@ -6,7 +6,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 
-from carpoolsim.carpool.trip_cluster_basic import TripDemands
+from carpoolsim.carpool.trip_demands import TripDemands
 from carpoolsim.carpool.trip_cluster_dc import TripClusterDC
 from carpoolsim.network_prepare import build_carpool_network
 
