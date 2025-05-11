@@ -4,7 +4,7 @@ Filter out the carpool assignments for PNR mode.
 import numpy as np
 import pandas as pd
 
-from .trip_cluster_dumb import TripClusterAbstract
+from .trip_cluster_abstract import TripClusterAbstract
 
 
 def generate_pnr_trip_map_filt(
