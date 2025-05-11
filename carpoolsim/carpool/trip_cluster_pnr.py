@@ -144,17 +144,15 @@ class TripClusterPNR(TripClusterAbstract):
             trips = self.trips
         # nrow: num of drivers; ncol: num of passengers
         num_driver, num_all, lots_ncol = self.nrow, self.ncol, self.pnr_ncol
-        # print(f"nrow: {nrow}; nrol: {ncol}; lots_ncol: {lots_ncol}")
         oxs, oys, dxs, dys = get_trip_projected_ods(trips)
-        # positions of the parking lots
+        # positions of the parking lots (mxs: middle x coordinates, mys: middle y coordinates)
         mxs, mys = get_pnr_xys(self.parking_lots)
 
-        # TODO: check the correctness of the following logic
-        # origin distance in (x, y) axis between trip origin and parking lots (vectorized)
-        mat_om_x, mat_om_y, man_od = get_distances_among_coordinates(oxs, oys)
-        mat_md_x, mat_md_y, man_om = get_distances_among_coordinates(dxs, dys)
+        # origin distance between trip origin and parking lots (vectorized)
+        mat_om_dx, mat_om_dy, man_od = get_distances_among_coordinates(oxs, oys)
+        mat_md_dx, mat_md_dy, man_om = get_distances_among_coordinates(dxs, dys)
         # original distance from o to d for each trip
-        mat_od_x, mat_od_y, man_md = get_distances_among_coordinates(oxs, dxs)
+        mat_od_dx, mat_od_dy, man_md = get_distances_among_coordinates(oxs, dxs)
 
         # compute reroute distance using pnr facility
         post_dist = (man_om + man_md)
@@ -170,8 +168,8 @@ class TripClusterPNR(TripClusterAbstract):
         if use_mu2:
             # now it is time for implementing backward constraint
             # compute the vector for all drivers V_{O1D1}
-            part1 = -(mat_om_x * mat_md_x) + (mat_om_y * mat_md_y)
-            part2 = (mat_om_x * mat_md_x) + (mat_om_y * mat_om_y)
+            part1 = -(mat_om_dx * mat_md_dx) + (mat_om_dy * mat_md_dy)
+            part2 = (mat_om_dx * mat_md_dx) + (mat_om_dy * mat_md_dy)
             backward_index = part1 / part2
             self.pnr_matrix = (self.pnr_matrix &
                                (backward_index <= mu2)).astype(np.bool_)

@@ -6,6 +6,14 @@ import numpy as np
 import pandas as pd
 
 
+def arrs2vec(arrs: list[np.ndarray]) -> np.ndarray:
+    """
+    Reshape a list of numpy arrays to one row, multiple columns.
+    """
+    arrs = [arr.reshape((1, -1)) for arr in arrs]
+    return arrs
+
+
 def get_trip_projected_ods(
     trips: pd.DataFrame
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -38,10 +46,7 @@ def get_distances_among_coordinates(
     Get the distance matrix among N travelers.
     Return arrays are [N, N] to describe the distance between each pair of travelers.
     """
-    if xs.ndim == 1:
-        xs = xs.reshape((1, -1))
-    if ys.ndim == 1:
-        ys = ys.reshape((1, -1))
+    xs, ys = arrs2vec([xs, ys])
     nrow = ncol = xs.shape[1]
     mat_dx = np.tile(xs.transpose(), (1, ncol))
     mat_dx = np.abs(mat_dx - np.tile(xs, (nrow, 1)))
@@ -49,3 +54,24 @@ def get_distances_among_coordinates(
     mat_dy = np.abs(mat_dy - np.tile(ys, (nrow, 1)))
     mat_dist = np.sqrt(mat_dx ** 2 + mat_dy ** 2)
     return mat_dx, mat_dy, mat_dist
+
+
+def get_distances_between_ods(
+    oxs: np.ndarray,
+    oys: np.ndarray,
+    dxs: np.ndarray,
+    dys: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Get the distance matrix among N travelers.
+    """
+    oxs, oys, dxs, dys = arrs2vec([oxs, oys, dxs, dys])
+    num_orig = oxs.shape[1]
+    num_dest = dxs.shape[1]
+    mat_dx = np.tile(oxs.transpose(), (1, num_dest))
+    mat_dx = np.abs(mat_dx - np.tile(oxs, (num_orig, 1)))
+    mat_dy = np.tile(oys.transpose(), (1, num_dest))
+    mat_dy = np.abs(mat_dy - np.tile(oys, (num_orig, 1)))
+    mat_dist = np.sqrt(mat_dx ** 2 + mat_dy ** 2)
+    return mat_dx, mat_dy, mat_dist
+
