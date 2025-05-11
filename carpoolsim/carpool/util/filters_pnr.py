@@ -111,7 +111,7 @@ def compute_reroute_01_matrix_pnr(
     gamma: float = 1.5,
     ita: float = 0.5,
     print_mat: bool = True
-):
+) -> TripClusterAbstract:
     """
     Compute carpool-able matrix considering total reroute time (non-shared trip segments)
     This cannot be estimated before travel time matrix (self.tt_matrix) is fully computed

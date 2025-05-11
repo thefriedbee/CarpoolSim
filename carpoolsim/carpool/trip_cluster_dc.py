@@ -17,8 +17,6 @@ from carpoolsim.carpool.util.filters_dc import (
     compute_depart_01_matrix_pre,
     compute_reroute_01_matrix
 )
-import carpoolsim.carpool_solver.bipartite_solver as tg
-
 
 # Direct Carpool Mode
 class TripClusterDC(TripClusterAbstract):
@@ -243,16 +241,6 @@ class TripClusterDC(TripClusterAbstract):
         for index in indexes_pairs:
             self.compute_carpool(index[0], index[1], fixed_role=True)
 
-    def compute_optimal_bipartite(self) -> tuple[int, list[tuple[int, int]]]:
-        """
-        Solve the pairing problem using traditional bipartite method.
-        This is to compare results with that of linear programming one
-        :return:
-        """
-        bipartite_obj = tg.CarpoolBipartite(self.cp_matrix, self.tt_matrix)
-        num_pair, pairs = bipartite_obj.solve_bipartite_conflicts_naive()
-        return num_pair, pairs
-
     def compute_in_one_step(
         self,  print_mat: bool = False,
         mu1: float = 1.5, mu2: float = 0.1, dst_max: float = 5 * 5280,
@@ -273,7 +261,7 @@ class TripClusterDC(TripClusterAbstract):
         self.compute_pickup_01_matrix(threshold_dist=dst_max, mu1=mu1, mu2=mu2)
         self._print_matrix(step=3, print_mat=print_mat)
 
-        # step 4. combine all aforementioned filters to generate one big filter
+        # step 4. evaluate information using the actual traveling paths
         self.evaluate_carpoolable_trips(reset_off_diag=False)
         self._print_matrix(step=4, print_mat=print_mat)
 

@@ -125,7 +125,7 @@ class TripClusterPNR(TripClusterAbstract):
         mu1: float = 1.3,
         trips: pd.DataFrame | None =None,
         print_mat: bool = True
-    ):
+    ) -> None:
         """
         For each trip, compute the parking lots that can be used as the PNR "meetings point" for carpooled trip.
         step 1 (this function). Use Euclidean distance between coordinates
@@ -322,55 +322,49 @@ class TripClusterPNR(TripClusterAbstract):
             if False, consider only PNR trips
         :return:
         """
-        # step 0. compute diagonal
+        # step 1. compute drive alone information
         self.td.compute_sov_info()
         tt_lst, dst_lst = self.td.soloTimes, self.td.soloDists
         self.fill_diagonal(tt_lst, dst_lst)
+        self._print_matrix(step=1, print_mat=print_mat)
 
-        # step 1. a set of filter based on euclidean distance between coordinates
+        # step 2. a set of filter based on euclidean distance between coordinates
         # (driver pass through a PNR station)
         self.compute_01_matrix_to_station_p1(
             threshold_dist=dst_max, mu1=mu1, 
             trips=self.trips, print_mat=print_mat
         )
-        # step 2 make sure each SOV trip can travel through PNR
+        self._print_matrix(step=2, print_mat=print_mat)
+
+        # step 3. make sure each SOV trip can travel through PNR
         # Note: filter by the passenger's before after traveling TIME
         self.compute_01_matrix_to_station_p2(delta=15, gamma=1.5)
-        # step 3. check departure time difference to filter (for all reasonable pnr stations)
+        self._print_matrix(step=3, print_mat=print_mat)
+
+        # step 4. check departure time difference to filter (for all reasonable pnr stations)
         # this may filter out useful matches for PNR mode
         self.cp_matrix = compute_depart_01_matrix_pre_pnr(self, Delta1=Delta1)
-        # step 4. combine all aforementioned filters to generate one big filter
+        self._print_matrix(step=4, print_mat=print_mat)
+
+        # step 5. combine all aforementioned filters to generate one big filter
         self.compute_carpoolable_trips_pnr(reset_off_diag=False)
-        if print_mat:
-            # print("ml matrix (after step 4)")
-            # print(self.ml_matrix[:10, :10])
-            print("cp_matrix (after step 4):", self.cp_matrix.sum())
-            print(self.cp_matrix[:8, :8])
-            print("tt_matrix (after step 4):", self.tt_matrix.sum())
-            print(self.tt_matrix[:8, :8])
-            pass
-        # step 5. filter by the maximum waiting time for the driver at pickup location
+        self._print_matrix(step=5, print_mat=print_mat)
+
+        # step 6. filter by the maximum waiting time for the driver at pickup location
         self.cp_matrix = compute_depart_01_matrix_post_pnr(
             trip_cluster=self, Delta2=Delta2, Gamma=Gamma
         )
-        if print_mat:
-            # print("ml matrix (after step 5)")
-            # print(self.ml_matrix[:10, :10])
-            print("cp_matrix (after step 5):", self.cp_matrix.sum())
-            print(self.cp_matrix[:8, :8])
-            print("tt_matrix (after step 5):", self.tt_matrix.sum())
-            print(self.tt_matrix[:8, :8])
-            pass
-        # step 6. filter by real computed waiting time (instead of coordinates before)
-        self = compute_reroute_01_matrix_pnr(
+        self._print_matrix(step=6, print_mat=print_mat)
+
+        # step 7. filter by real computed waiting time (instead of coordinates before)
+        compute_reroute_01_matrix_pnr(
             trip_cluster=self,
             delta=delta, gamma=gamma, ita_pnr=ita,
             print_mat=print_mat
         )
-        if print_mat:
-            print("cp_matrix (after step 6):", self.cp_matrix.sum())
-            print(self.cp_matrix[:8, :8])
+        self._print_matrix(step=7, print_mat=print_mat)
 
-
-
-
+        # step 8. solve the carpool conflicts
+        num_pair, pairs = self.compute_optimal_bipartite()
+        self._print_matrix(step=8, print_mat=print_mat)
+        return num_pair, pairs
