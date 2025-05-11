@@ -325,10 +325,10 @@ class TripClusterPNR(TripClusterAbstract):
         self.fill_diagonal(tt_lst, dst_lst)
 
         # step 1. a set of filter based on euclidean distance between coordinates
-        # (driver to station)
+        # (driver pass through a PNR station)
         self.compute_01_matrix_to_station_p1(
-            threshold_dist=dst_max, mu1=mu1, mu2=mu2,
-            trips=self.trips, use_mu2=True, print_mat=print_mat
+            threshold_dist=dst_max, mu1=mu1, 
+            trips=self.trips, print_mat=print_mat
         )
         # step 2 make sure each SOV trip can travel through PNR
         # Note: filter by the passenger's before after traveling TIME

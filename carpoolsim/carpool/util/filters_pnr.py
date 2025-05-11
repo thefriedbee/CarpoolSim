@@ -41,10 +41,13 @@ def generate_pnr_trip_map_filt(
             # self.pnr_access_info[trip_id, station_id] = None
             continue
         # store station info to the list (could be multiple accessible PNR stations)
-        if trips['pnr'].iloc[trip_id] is None:
-            trips['pnr'].iloc[trip_id] = [station_id]
+        # avoid chained assignment warning
+        trips_pnr_col = trips['pnr'].copy()
+        if trips_pnr_col.iloc[trip_id] is None:
+            trips_pnr_col.iloc[trip_id] = [station_id]
         else:
-            trips['pnr'].iloc[trip_id].append(station_id)
+            trips_pnr_col.iloc[trip_id].append(station_id)
+        trips['pnr'] = trips_pnr_col
 
     # print new filtered results
     # finally, prepare the big 0-1 matrix between travelers
@@ -91,15 +94,15 @@ def compute_depart_01_matrix_pre_pnr(
     if default_rule:
         # criterion 1. driver should leave earlier than the passenger, but not earlier than 15 minutes
         # criterion 2. driver should wait at most 5 minutes
-        cp_pnr_matrix = (tc.cp_pnr_matrix &
-                        (mat >= 0) &
-                        (np.absolute(mat) <= Delta1)).astype(np.bool_)
+        cp_matrix = (tc.cp_matrix &
+                     (mat >= 0) &
+                     (np.absolute(mat) <= Delta1)).astype(np.bool_)
     else:
         # criterion 1. passenger/driver depart time within +/- 15 minutes
         # criterion 2. passenger/driver wait time +/- 5 minutes
-        cp_pnr_matrix = (tc.cp_pnr_matrix &
-                        (np.absolute(mat) <= Delta1)).astype(np.bool_)
-    return cp_pnr_matrix
+        cp_matrix = (tc.cp_matrix &
+                     (np.absolute(mat) <= Delta1)).astype(np.bool_)
+    return cp_matrix
 
 
 def compute_reroute_01_matrix_pnr(
@@ -122,7 +125,7 @@ def compute_reroute_01_matrix_pnr(
     nrow, ncol = tc.nrow, tc.ncol
     tt_pnr_matrix = tc.tt_pnr_matrix
     tt_pnr_matrix_shared = tc.tt_pnr_matrix_shared
-    cp_pnr_matrix = tc.cp_pnr_matrix
+    cp_matrix = tc.cp_matrix
     # propagate drive alone matrix
     drive_alone_tt = tt_pnr_matrix.diagonal().reshape(-1, 1)
     passenger_alone_tt = np.array([tc.soloTimes[i] for i in range(ncol)]).reshape(1, -1)
@@ -152,13 +155,13 @@ def compute_reroute_01_matrix_pnr(
         # print(cp_reroute_ratio_matrix[:8, :8])
         print("cp_time_similarity passed count:", cp_time_similarity.sum())
         # print(cp_time_similarity[:8, :8])
-    cp_pnr_matrix = (cp_pnr_matrix &
-                     cp_reroute_matrix &
-                     cp_reroute_ratio_matrix &
-                     cp_time_similarity).astype(bool)
+    cp_matrix = (cp_matrix &
+                 cp_reroute_matrix &
+                 cp_reroute_ratio_matrix &
+                 cp_time_similarity).astype(bool)
     # need to mask tt and ml matrix
-    tc.tt_pnr_matrix[cp_pnr_matrix == 0] = np.nan
-    tc.ml_pnr_matrix[cp_pnr_matrix == 0] = np.nan
+    tc.tt_matrix[cp_matrix == 0] = np.nan
+    tc.ml_matrix[cp_matrix == 0] = np.nan
     return tc
 
 
@@ -180,10 +183,10 @@ def compute_depart_01_matrix_post_pnr(
     tc = trip_cluster
     nrow, ncol = tc.nrow, tc.ncol
     trips = tc.trips
-    cp_pnr_matrix = tc.cp_pnr_matrix
+    cp_matrix = tc.cp_matrix
     soloTimes = tc.soloTimes
     # step 1. get the travel time to each feasible station
-    ind = np.argwhere(cp_pnr_matrix == 1)
+    ind = np.argwhere(cp_matrix == 1)
     # pnr depart time matrix (diff between drivers)
     mat = np.full((nrow, ncol), np.nan)
     for ind_one in ind:
@@ -208,12 +211,12 @@ def compute_depart_01_matrix_post_pnr(
     passenger_time = np.tile(passenger_time, (nrow, 1))
     if default_rule:
         # passenger only waits the driver should wait at most Delta2 minutes
-        cp_pnr_matrix = (cp_pnr_matrix &
-                        (mat >= 0) & (mat <= Delta2) &
-                        (np.absolute(mat/passenger_time) <= Gamma)).astype(np.bool_)
+        cp_matrix = (cp_matrix &
+                     (mat >= 0) & (mat <= Delta2) &
+                     (np.absolute(mat/passenger_time) <= Gamma)).astype(np.bool_)
     else:
         # passenger/driver waits the other party for at most Delta2 minutes
-        cp_pnr_matrix = (cp_pnr_matrix &
-                        (np.absolute(mat) <= Delta2) &
-                        (np.absolute(mat/passenger_time) <= Gamma)).astype(np.bool_)
-    return cp_pnr_matrix
+        cp_matrix = (cp_matrix &
+                     (np.absolute(mat) <= Delta2) &
+                     (np.absolute(mat/passenger_time) <= Gamma)).astype(np.bool_)
+    return cp_matrix
