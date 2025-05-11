@@ -295,4 +295,4 @@ class TripClusterDC(TripClusterAbstract):
             return
         print(f"after step {step}")
         print("cp matrix:", self.cp_matrix.astype(int).sum())
-        print(self.cp_matrix[:8, :8])
+        print(self.cp_matrix[:8, :8].astype(int))

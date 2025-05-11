@@ -178,7 +178,7 @@ class CarpoolBipartite:
                 break
         return return_matches
 
-    def solve_bipartite_conflicts_naive(self):
+    def solve_bipartite_conflicts_naive(self, keep_only_carpool_pairs: bool = True):
         """
         Solve role conflicts (one cannot be passenger and driver at the same time)
         1. find all matching chains/loops
@@ -224,7 +224,15 @@ class CarpoolBipartite:
             # print('set name is', sn,  'set matching is:', sorted(lst))
             all_matches.extend(lst)
         # print('Matching pairs are: ', sorted(all_matches))
+        if keep_only_carpool_pairs:
+            all_matches = self.keep_only_carpool_pairs(all_matches)
         return len(all_matches), all_matches
+
+    def keep_only_carpool_pairs(self, all_matches: list[tuple[int, int]]):
+        """
+        Keep only carpool pairs in the match_reverse list.
+        """
+        return [pair for pair in all_matches if pair[0] != pair[1]]
 
     # def solve_bipartite_gt(self):
     #     """
