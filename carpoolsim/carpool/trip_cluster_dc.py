@@ -22,8 +22,8 @@ import carpoolsim.carpool_solver.bipartite_solver as tg
 
 # Direct Carpool Mode
 class TripClusterDC(TripClusterAbstract):
-    def __init__(self, trips: TripDemands):
-        super().__init__(trips)
+    def __init__(self, trip_demands: TripDemands):
+        super().__init__(trip_demands)
 
     def compute_carpool(
         self,
