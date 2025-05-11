@@ -47,3 +47,17 @@ get_taz = get_contained_taz
 
 
 
+def preprocess_trips(
+    trips: pd.DataFrame,
+    df_nodes: pd.DataFrame,
+) -> pd.DataFrame:
+    trips[["ox", "oy", "o_node"]] = trips.apply(
+        get_xy,
+        axis=1, df_nodes=df_nodes, mode="orig"
+    )
+    trips[["dx", "dy", "d_node"]] = trips.apply(
+        get_xy,
+        axis=1, df_nodes=df_nodes, mode="dest"
+    )
+    return trips
+

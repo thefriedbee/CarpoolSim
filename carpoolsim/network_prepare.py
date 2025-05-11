@@ -7,7 +7,7 @@ from shapely.geometry import Point
 import networkx as nx
 
 import carpoolsim.basic_settings as bs
-import carpoolsim.carpool.util as ut
+import carpoolsim.dataclass.utils as ut
 warnings.filterwarnings('ignore')
 
 
@@ -17,10 +17,10 @@ def convert_all_df_column_names_to_lower(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def initialize_abm15_links(
-        df_nodes_raw: gpd.GeoDataFrame,
-        df_links_raw: gpd.GeoDataFrame,
-        drop_connector: bool = True,
-        speed_column: str | None = None,
+    df_nodes_raw: gpd.GeoDataFrame,
+    df_links_raw: gpd.GeoDataFrame,
+    drop_connector: bool = True,
+    speed_column: str | None = None,
 ) -> pd.DataFrame:
     """
     Import shape-file to GeoDataFrame, convert the format based on our needs.
@@ -86,7 +86,7 @@ def initialize_abm15_links(
 
 
 def build_carpool_network(
-        df_links: pd.DataFrame,
+    df_links: pd.DataFrame,
 ) -> nx.DiGraph:
     """
     Given original network like the DataFrame of abm15, create directed graph
@@ -137,11 +137,11 @@ def build_carpool_network(
 
 # add projected coordinate (x,y) given (lon, lat)
 def add_xy(
-        df: pd.DataFrame,
-        lat: str, lon: str,
-        x: str, y: str,
-        x_sq: str, y_sq: str,
-        grid_size: float = 25000.0
+    df: pd.DataFrame,
+    lat: str, lon: str,
+    x: str, y: str,
+    x_sq: str, y_sq: str,
+    grid_size: float = 25000.0
 ) -> pd.DataFrame:
     """
     Given (lat, lon) information, generate coordinates in local projection system
@@ -160,14 +160,14 @@ def add_xy(
 
 
 def point_to_node(
-        df_points: pd.DataFrame,
-        df_links: pd.DataFrame,
-        use_grid: bool = False,
-        walk_speed: float = 2.0,
-        grid_size: float = 25000.0,
-        dist_thresh: float = 5280.0,
-        is_origin: bool = True,
-        freeway_links: bool = False,
+    df_points: pd.DataFrame,
+    df_links: pd.DataFrame,
+    use_grid: bool = False,
+    walk_speed: float = 2.0,
+    grid_size: float = 25000.0,
+    dist_thresh: float = 5280.0,
+    is_origin: bool = True,
+    freeway_links: bool = False,
 ) -> pd.DataFrame:
     """
     Given a column of location projected to local coordinates (x, y), find nearest node in the network,
@@ -264,14 +264,13 @@ def pnr_filter_within_TAZs(
     return pnr_lots
 
 
-def pnr_pre_process(
-        pnr_lots: gpd.GeoDataFrame,
-        dict_settings: dict,
+def pnr_add_projection(
+    pnr_lots: gpd.GeoDataFrame,
+    dict_settings: dict,
 ) -> pd.DataFrame:
     df_links = dict_settings['network']['car']['links']
     freeway_links = dict_settings['network']['car']['links']
 
-    # df_points = dict_settings['network']['car']['nodes']
     df_points = pnr_lots
 
     walk_speed = dict_settings['walk_speed']
