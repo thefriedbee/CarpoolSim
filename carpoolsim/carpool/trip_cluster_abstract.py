@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from carpoolsim.carpool.trip_demands import TripDemands
-import carpoolsim.carpool_solver.bipartite_solver as tg
 
 
 class TripClusterAbstract(ABC):
@@ -72,6 +71,8 @@ class TripClusterAbstract(ABC):
         print(self.cp_matrix[:8, :8].astype(int))
 
     def compute_optimal_bipartite(self) -> tuple[int, list[tuple[int, int]]]:
+        # import the solver here
+        import carpoolsim.carpool_solver.bipartite_solver as tg
         """
         Solve the pairing problem using traditional bipartite method.
         This is to compare results with that of linear programming one
