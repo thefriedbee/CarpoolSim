@@ -108,6 +108,9 @@ class TripClusterPNR(TripClusterAbstract):
         # if can share multiple stations
         time_lst = []
         for i, sid in enumerate(lst):
+            # compute on demand
+            self.compute_pnr_access(int_idx1, sid)
+            self.compute_pnr_access(int_idx2, sid)
             info1 = self.pnr_access_info[int_idx1, sid]
             info2 = self.pnr_access_info[int_idx2, sid]
             tot_time = info1[1] + info2[1]  # two traveler's total access time to station
@@ -304,7 +307,7 @@ class TripClusterPNR(TripClusterAbstract):
         indexes_pairs = [index for index in indexes_pairs if index[0] != index[1]]
         # print('PNR Indices matching0: \n', indexes_pairs)
         for index in indexes_pairs:
-            self.compute_carpool_pnr(index[0], index[1], fixed_role=True)
+            self.compute_carpool(index[0], index[1], fixed_role=True)
 
     def compute_in_one_step(
         self, mu1: float = 1.3, mu2: float = 0.1, dst_max: float = 5 * 5280,
