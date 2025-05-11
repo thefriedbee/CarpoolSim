@@ -27,6 +27,7 @@ class TripDemands:
             'orig_inner_id', 'dest_inner_id'
         ]
         df = df.drop(cols_to_drop, axis=1, errors='ignore')
+        df['pnr'] = None  # store accessible pnr station
         self.trips = df.copy()
         self.int2idx = {i: index for i, (index, row) in enumerate(df.iterrows())}
         self.idx2int = {index: i for i, (index, row) in enumerate(df.iterrows())}

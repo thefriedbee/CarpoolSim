@@ -82,13 +82,19 @@ class TripClusterPNR(TripClusterAbstract):
         p1, t1, d1, t_all = calculateAccess(trip_row, pnr_row)
         self.pnr_access_info[trip_id, station_id] = [p1, t1, d1, t_all]
 
-    def _check_trips_best_pnr(self, trip_row1, trip_row2, int_idx1, int_idx2):
+    def _check_trips_best_pnr(
+        self, 
+        trip_row1: pd.Series, 
+        trip_row2: pd.Series, 
+        int_idx1: int, 
+        int_idx2: int
+    ):
         """
         Just check if two trips can share one PNR station.
         If so, among the stations, choose the best station for joint trip
         :param trip_row1: Pandas Series for trip 1
         :param trip_row2: Pandas Series for trip 2
-        :return: a list of PNR stations feasible by both trips
+        :return: the PNR station reachable by both trips (shortest total travel time)
         """
         if trip_row1['pnr'] is None or trip_row2['pnr'] is None:
             return None
