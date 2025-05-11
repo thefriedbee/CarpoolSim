@@ -24,13 +24,6 @@ import carpoolsim.carpool_solver.bipartite_solver as tg
 class TripClusterDC(TripClusterAbstract):
     def __init__(self, trips: TripDemands):
         super().__init__(trips)
-    
-    def fill_diagonal(self, tt_lst, dst_lst):
-        # update diagonal cp matrix
-        np.fill_diagonal(self.cp_matrix, 1)
-        # update tt matrix and ml matrix
-        np.fill_diagonal(self.tt_matrix, tt_lst)
-        np.fill_diagonal(self.ml_matrix, dst_lst)
 
     def compute_carpool(
         self,

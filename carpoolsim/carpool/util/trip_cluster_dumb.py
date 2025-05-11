@@ -44,9 +44,12 @@ class TripClusterAbstract(ABC):
     def network(self):
         return self.td.network
 
-    @abstractmethod
     def fill_diagonal(self, tt_lst, dst_lst):
-        pass
+        # update diagonal cp matrix
+        np.fill_diagonal(self.cp_matrix, 1)
+        # update tt matrix and ml matrix
+        np.fill_diagonal(self.tt_matrix, tt_lst)
+        np.fill_diagonal(self.ml_matrix, dst_lst)
 
     @abstractmethod
     def compute_carpool(self, int_idx1, int_idx2, fixed_role: bool = False, **kwargs):

@@ -18,9 +18,6 @@ from carpoolsim.carpool.util.network_search import (
     dynamic_shortest_path_search,
     naive_shortest_path_search
 )
-from carpoolsim.carpool.util.filters_pnr import (
-    generate_pnr_trip_map_filt
-)
 from carpoolsim.carpool.util.plotter import (
     plot_single_trip,
     plot_single_trip_pnr

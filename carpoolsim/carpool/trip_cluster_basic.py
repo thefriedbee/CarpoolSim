@@ -18,7 +18,8 @@ class TripDemands:
         df: pd.DataFrame,
         network: nx.DiGraph,
         links: pd.DataFrame,
-        engine: sqlalchemy.Engine
+        engine: sqlalchemy.Engine,
+        parking_lots: pd.DataFrame | None = None
     ) -> None:
         cols_to_drop = [
             'ox_sq', 'oy_sq', 'dx_sq', 'dy_sq',
@@ -33,6 +34,7 @@ class TripDemands:
         self.network = network
         self.links = links
         self.engine = engine
+        self.parking_lots = parking_lots
         # record travel information
         self.soloPaths = []  # trip retention of SOV paths
         self.soloDists = []  # trip retention of SOV distance
