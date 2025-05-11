@@ -3,8 +3,8 @@ Apply DC carpooling mode to a set of trips.
 """
 import numpy as np
 
-from carpoolsim.carpool.trip_cluster_basic import TripDemands
-from carpoolsim.carpool.util.trip_cluster_abstract import TripClusterAbstract
+from carpoolsim.carpool.trip_demands import TripDemands
+from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
 from carpoolsim.carpool.util.network_search import (
     get_path_distance_and_tt, 
     dynamic_shortest_path_search

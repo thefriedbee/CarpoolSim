@@ -4,7 +4,7 @@ The code used for solving the carpooling matrix.
 import numpy as np
 from gurobipy import Model, GRB, quicksum
 
-from carpoolsim.carpool.util.trip_cluster_abstract import TripClusterAbstract
+from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
 
 
 def compute_optimal_lp(

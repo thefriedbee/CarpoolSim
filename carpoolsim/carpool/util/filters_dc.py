@@ -2,7 +2,7 @@
 Filter out the carpool assignments for DC mode.
 """
 import numpy as np
-from carpoolsim.carpool.util.trip_cluster_abstract import TripClusterAbstract
+from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
 
 
 def compute_depart_01_matrix_pre(

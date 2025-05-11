@@ -2,11 +2,11 @@
 Move all functions evaluating the carpool assignments results.
 """
 import pandas as pd
-from ..trip_cluster import TripCluster
+from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
 
 
 def evaluate_trips(
-    trip_cluster: TripCluster,
+    trip_cluster: TripClusterAbstract,
     verbose: bool = False,
     use_bipartite: bool = False
 ) -> tuple[int, int, float, float, float, float, int]:
@@ -81,7 +81,7 @@ def evaluate_trips(
 
 
 def evaluate_individual_trips_both(
-    trip_cluster: TripCluster,
+    trip_cluster: TripClusterAbstract,
     verbose: bool = False,
     use_bipartite: bool = False,
     trips: pd.DataFrame | None = None,
@@ -172,7 +172,7 @@ def evaluate_individual_trips_both(
 
 
 def evaluate_individual_trips(
-    trip_cluster: TripCluster,
+    trip_cluster: TripClusterAbstract,
     verbose: bool = False,
     use_bipartite: bool = False
 ) -> pd.DataFrame:
