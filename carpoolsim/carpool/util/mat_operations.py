@@ -69,9 +69,9 @@ def get_distances_between_ods(
     num_orig = oxs.shape[1]
     num_dest = dxs.shape[1]
     mat_dx = np.tile(oxs.transpose(), (1, num_dest))
-    mat_dx = np.abs(mat_dx - np.tile(oxs, (num_orig, 1)))
+    mat_dx = np.abs(mat_dx - np.tile(dxs, (num_orig, 1)))
     mat_dy = np.tile(oys.transpose(), (1, num_dest))
-    mat_dy = np.abs(mat_dy - np.tile(oys, (num_orig, 1)))
+    mat_dy = np.abs(mat_dy - np.tile(dys, (num_orig, 1)))
     mat_dist = np.sqrt(mat_dx ** 2 + mat_dy ** 2)
     return mat_dx, mat_dy, mat_dist
 
