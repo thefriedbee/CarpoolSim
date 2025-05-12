@@ -121,7 +121,9 @@ class TripClusterPNR(TripClusterAbstract):
         self,
         threshold_dist: float = 5280 * 5,
         mu1: float = 1.3,
-        trips: pd.DataFrame | None =None,
+        mu2: float = 0.3,  # "back rate"
+        use_mu2: bool = True,
+        trips: pd.DataFrame | None = None,
         print_mat: bool = True
     ) -> None:
         """
@@ -170,6 +172,15 @@ class TripClusterPNR(TripClusterAbstract):
             print("mat_ratio total pass is (<= reroute ratio):", (mat_ratio < mu1).sum())
             print("man_om total pass is (<= threshold miles):", (man_om <= threshold_dist).sum())
             print("pnr 0-1 matrix total pass is (after basic euclidean filters):", self.pnr_matrix.sum())
+        if use_mu2:
+            # vector relationships of euclidean distances
+            # part1: - v(OM)*v(MD) / |v(OM)|*|v(OM)|
+            # the "projected distance of going backwards"
+            part1 = -(mat_om_dx * mat_md_dx) + (mat_om_dy * mat_md_dy)
+            part2 = (mat_om_dx * mat_md_dx) + (mat_om_dy * mat_om_dy)
+            backward_index = part1 / part2
+            self.pnr_matrix = (self.pnr_matrix &
+                               (backward_index <= mu2)).astype(np.bool_)
 
     def compute_01_matrix_to_station_p2(
         self,
@@ -329,7 +340,7 @@ class TripClusterPNR(TripClusterAbstract):
         # step 2. a set of filter based on euclidean distance between coordinates
         # (driver pass through a PNR station)
         self.compute_01_matrix_to_station_p1(
-            threshold_dist=dst_max, mu1=mu1, 
+            threshold_dist=dst_max, mu1=mu1, mu2=mu2, use_mu2=True,
             trips=self.trips, print_mat=print_mat
         )
         self._print_matrix(step=2, print_mat=print_mat)
