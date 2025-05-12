@@ -11,6 +11,14 @@ import carpoolsim.dataclass.utils as ut
 warnings.filterwarnings('ignore')
 
 
+def project_gpd_to_local(gdf: gpd.GeoDataFrame, crs: str) -> gpd.GeoDataFrame:
+    """
+    Project a GeoDataFrame to a local coordinate system.
+    """
+    gdf = gdf.to_crs(crs)
+    return gdf
+
+
 def convert_all_df_column_names_to_lower(df: pd.DataFrame) -> pd.DataFrame:
     df.columns = [cn.lower() for cn in df.columns]
     return df
@@ -33,6 +41,8 @@ def initialize_abm15_links(
     # keep all column names to lower cases
     df_nodes_raw = convert_all_df_column_names_to_lower(df_nodes_raw)
     df_links_raw = convert_all_df_column_names_to_lower(df_links_raw)
+    df_nodes_raw = project_gpd_to_local(df_nodes_raw, bs.CRS)
+    df_links_raw = project_gpd_to_local(df_links_raw, bs.CRS)
 
     df_nodes = df_nodes_raw[['nid', 'x', 'y', 'lat', 'lon']]
     # notice FACTTYPE zeros stands for all connectors; FACTTYPE over 50 stands for transit links or its access!
@@ -137,21 +147,23 @@ def build_carpool_network(
 
 # add projected coordinate (x,y) given (lon, lat)
 def add_xy(
-    df: pd.DataFrame,
+    df: pd.DataFrame | gpd.GeoDataFrame,
     lat: str, lon: str,
     x: str, y: str,
     x_sq: str, y_sq: str,
-    grid_size: float = 25000.0
-) -> pd.DataFrame:
+    grid_size: float = 25000.0,
+    reset_crs: bool = True,
+) -> gpd.GeoDataFrame:
     """
     Given (lat, lon) information, generate coordinates in local projection system
         Also, classify location into different categories using grids and 
         store the row and column the point falls into.
     """
-    crs = {'init': 'epsg:4326', 'no_defs': True}  # NAD83: EPSG 4326
-    geometry = [Point(xy) for xy in zip(df[lon], df[lat])]
-    df = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
-    df = df.to_crs(bs.CRS)
+    if isinstance(df, pd.DataFrame) or reset_crs:
+        crs = {'init': 'epsg:4326', 'no_defs': True}  # NAD83: EPSG 4326
+        geometry = [Point(xy) for xy in zip(df[lon], df[lat])]
+        df = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
+    df = project_gpd_to_local(df, bs.CRS)
     df[x] = df['geometry'].apply(lambda x: x.coords[0][0])
     df[y] = df['geometry'].apply(lambda x: x.coords[0][1])
     df[x_sq] = round(df[x] / grid_size, 0)
@@ -160,14 +172,13 @@ def add_xy(
 
 
 def point_to_node(
-    df_points: pd.DataFrame,
-    df_links: pd.DataFrame,
+    df_points: gpd.GeoDataFrame,
+    df_links: gpd.GeoDataFrame,
     use_grid: bool = False,
     walk_speed: float = 2.0,
     grid_size: float = 25000.0,
     dist_thresh: float = 5280.0,
     is_origin: bool = True,
-    freeway_links: bool = False,
 ) -> pd.DataFrame:
     """
     Given a column of location projected to local coordinates (x, y), find nearest node in the network,
@@ -186,6 +197,8 @@ def point_to_node(
         df_points: expand same input DataFrame with information about the nearest node and
                    walking time from point to the node.
     """
+    df_points = project_gpd_to_local(df_points, bs.CRS)
+    df_links = project_gpd_to_local(df_links, bs.CRS)
 
     def find_grid(pt_x):
         return round(pt_x / grid_size), 0
@@ -219,7 +232,9 @@ def point_to_node(
             df_links_i = df_links[filt1 & filt2]
             # if one cannot find df links, it is an external point, try to pick a highway access link
             if len(df_links_i) == 0:
-                df_links_i = freeway_links
+                df_points.loc[ind, 'node_id'] = -1
+                df_points.loc[ind, 'node_t'] = -1
+                continue
             # find the closest link and the distance
             link_id_dist = find_closest_link(row.geometry, gpd.GeoSeries(df_links_i.geometry))
             linki = df_links_i.loc[link_id_dist[0], :]
@@ -254,6 +269,7 @@ def pnr_filter_within_TAZs(
     pnr_lots: gpd.GeoDataFrame,
     tazs: gpd.GeoDataFrame,
 ) -> pd.DataFrame:
+    pnr_lots = pnr_lots.to_crs('epsg:4326')
     # for each point, search if it is contained in polygon
     pnr_lots['taz'] = pnr_lots['geometry'].apply(ut.get_taz, tazs=tazs)
 
@@ -269,35 +285,25 @@ def pnr_add_projection(
     dict_settings: dict,
 ) -> pd.DataFrame:
     df_links = dict_settings['network']['car']['links']
-    freeway_links = dict_settings['network']['car']['links']
-
-    df_points = pnr_lots
 
     walk_speed = dict_settings['walk_speed']
     grid_size = dict_settings['grid_size']
     ntp_dist_thresh = dict_settings['ntp_dist_thresh']
 
-    df_points = add_xy(
-        df_points,
+    pnr_lots = add_xy(
+        pnr_lots,
         'lat', 'lon',
         'x', 'y',
         'x_sq', 'y_sq',
         grid_size=grid_size
     )
 
-    # still use prefix o_ for convenience
-    df_points = point_to_node(
-        df_points, df_links, False, walk_speed,
-        grid_size, ntp_dist_thresh,
-        freeway_links=freeway_links
-    ).rename(
-        columns={
-            'node_id': 'node',
-            'node_t': 't',
-            'x': 'x', 'y': 'y',
-            'x_sq': 'x_sq',
-            'y_sq': 'y_sq',
-            'dist': 'd'
-        }
-    )
-    return df_points
+    pnr_lots = point_to_node(
+        pnr_lots, df_links, False, walk_speed,
+        grid_size, ntp_dist_thresh
+    ).rename(columns={
+        'node_id': 'node',
+        'node_t': 't',
+        'dist': 'd'
+    })
+    return pnr_lots

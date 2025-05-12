@@ -73,13 +73,12 @@ class TripClusterPNR(TripClusterAbstract):
 
         def calculateAccess(trip, pnr):
             O1, O1_taz = trip['o_node'], trip['orig_taz']
-            O2, O2_taz = pnr['node'], pnr['taz']
+            M1, M1_taz = pnr['node'], pnr['taz']
             D1, D1_taz = trip['d_node'], trip['dest_taz']
-            p1, t1, d1 = dynamic_shortest_path_search(network, O1, O2, O1_taz, O2_taz)
-            p2, t2, d2 = dynamic_shortest_path_search(network, O2, D1, O2_taz, D1_taz)
-            # return access info, and travel time goes through PNR station
+            p1, t1, d1 = dynamic_shortest_path_search(network, O1, M1, O1_taz, M1_taz)
+            p2, t2, d2 = dynamic_shortest_path_search(network, M1, D1, M1_taz, D1_taz)
+            # return access info (nodes, time, and distance), and travel time goes through PNR station
             return p1, t1, d1, t1+t2
-        # return travel time, distance, and network nodes
         p1, t1, d1, t_all = calculateAccess(trip_row, pnr_row)
         self.pnr_access_info[trip_id, station_id] = [p1, t1, d1, t_all]
 
@@ -169,9 +168,9 @@ class TripClusterPNR(TripClusterAbstract):
                            (mat_ratio < mu1) &
                            (man_om <= threshold_dist))
         if print_mat:
-            print("mat_ratio total pass is:", (mat_ratio < mu1).sum())
-            print("man_om total pass is:", (man_om <= threshold_dist).sum())
-            print("pnr 0-1 matrix total pass is: (after basic euclidean filters)", self.pnr_matrix.sum())
+            print("mat_ratio total pass is (<= reroute ratio):", (mat_ratio < mu1).sum())
+            print("man_om total pass is (<= threshold miles):", (man_om <= threshold_dist).sum())
+            print("pnr 0-1 matrix total pass is (after basic euclidean filters):", self.pnr_matrix.sum())
 
     def compute_01_matrix_to_station_p2(
         self,
@@ -359,7 +358,7 @@ class TripClusterPNR(TripClusterAbstract):
         # step 7. filter by real computed waiting time (instead of coordinates before)
         compute_reroute_01_matrix_pnr(
             trip_cluster=self,
-            delta=delta, gamma=gamma, ita_pnr=ita,
+            delta=delta, gamma=gamma, ita=ita,
             print_mat=print_mat
         )
         self._print_matrix(step=7, print_mat=print_mat)

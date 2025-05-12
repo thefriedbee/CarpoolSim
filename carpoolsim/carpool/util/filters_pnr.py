@@ -21,15 +21,14 @@ def generate_pnr_trip_map_filt(
     :return:
     """
     trips = trip_cluster.trips
+    soloTimes = trip_cluster.td.soloTimes
     pnr_matrix = trip_cluster.pnr_matrix
     pnr_access_info = trip_cluster.pnr_access_info
-    soloTimes = trip_cluster.td.soloTimes
     # return all indicies with value 1
     ind = np.argwhere(pnr_matrix == 1)
     # print('pnr trip map filt:', ind)
     for ind_one in ind:
         trip_id, station_id = ind_one
-        # print(trip_id, station_id)
         trip_cluster.compute_pnr_access(trip_id, station_id)
         __, t1, __, t_all = pnr_access_info[trip_id, station_id]
         # get travel alone time
@@ -123,26 +122,27 @@ def compute_reroute_01_matrix_pnr(
     # unload parameters...
     tc = trip_cluster
     nrow, ncol = tc.nrow, tc.ncol
-    tt_pnr_matrix = tc.tt_pnr_matrix
-    tt_pnr_matrix_shared = tc.tt_pnr_matrix_shared
+    tt_matrix = tc.tt_matrix
+    tt_matrix_p2 = tc.tt_matrix_p2
     cp_matrix = tc.cp_matrix
+    solo_times = tc.td.soloTimes
     # propagate drive alone matrix
-    drive_alone_tt = tt_pnr_matrix.diagonal().reshape(-1, 1)
-    passenger_alone_tt = np.array([tc.soloTimes[i] for i in range(ncol)]).reshape(1, -1)
+    drive_alone_tt = tt_matrix.diagonal().reshape(-1, 1)
+    passenger_alone_tt = np.array([solo_times[i] for i in range(ncol)]).reshape(1, -1)
     # condition 1: total reroute time is smaller than threshold minutes
-    cp_reroute_matrix1 = ((tt_pnr_matrix - np.tile(drive_alone_tt, (1, ncol)))
+    cp_reroute_matrix1 = ((tt_matrix - np.tile(drive_alone_tt, (1, ncol)))
                             <= delta).astype(bool)
-    cp_reroute_matrix2 = ((tt_pnr_matrix - np.tile(passenger_alone_tt, (nrow, 1)))
+    cp_reroute_matrix2 = ((tt_matrix - np.tile(passenger_alone_tt, (nrow, 1)))
                             <= delta).astype(bool)
     cp_reroute_matrix = cp_reroute_matrix1 & cp_reroute_matrix2
     # condition 2: ratio is smaller than a threshold
-    cp_reroute_ratio_matrix1 = ((tt_pnr_matrix / np.tile(drive_alone_tt, (1, ncol)))
+    cp_reroute_ratio_matrix1 = ((tt_matrix / np.tile(drive_alone_tt, (1, ncol)))
                                 <= gamma).astype(bool)
-    cp_reroute_ratio_matrix2 = ((tt_pnr_matrix / np.tile(passenger_alone_tt, (nrow, 1)))
+    cp_reroute_ratio_matrix2 = ((tt_matrix / np.tile(passenger_alone_tt, (nrow, 1)))
                                 <= gamma).astype(bool)
     cp_reroute_ratio_matrix = cp_reroute_ratio_matrix1 & cp_reroute_ratio_matrix2
     # condition 3: rider should at least share ita of the total travel time
-    cp_time_similarity = ((tt_pnr_matrix_shared[:nrow, :ncol] / tt_pnr_matrix)
+    cp_time_similarity = ((tt_matrix_p2[:nrow, :ncol] / tt_matrix)
                             >= ita).astype(bool)
     # condition 4: after drop-off time / whole travel time?
     if print_mat:
@@ -184,7 +184,7 @@ def compute_depart_01_matrix_post_pnr(
     nrow, ncol = tc.nrow, tc.ncol
     trips = tc.trips
     cp_matrix = tc.cp_matrix
-    soloTimes = tc.soloTimes
+    solo_times = tc.td.soloTimes
     # step 1. get the travel time to each feasible station
     ind = np.argwhere(cp_matrix == 1)
     # pnr depart time matrix (diff between drivers)
@@ -207,7 +207,7 @@ def compute_depart_01_matrix_post_pnr(
         mat[trip_id1][trip_id2] = t1 - t2
         mat[trip_id2][trip_id1] = t2 - t1
 
-    passenger_time = np.array([soloTimes[i] for i in range(ncol)]).reshape(1, -1)
+    passenger_time = np.array([solo_times[i] for i in range(ncol)]).reshape(1, -1)
     passenger_time = np.tile(passenger_time, (nrow, 1))
     if default_rule:
         # passenger only waits the driver should wait at most Delta2 minutes

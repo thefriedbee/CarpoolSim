@@ -46,7 +46,6 @@ def get_contained_taz(x: Point, tazs: gpd.GeoDataFrame):
 get_taz = get_contained_taz
 
 
-
 def preprocess_trips(
     trips: pd.DataFrame,
     df_nodes: pd.DataFrame,
@@ -60,3 +59,27 @@ def preprocess_trips(
         axis=1, df_nodes=df_nodes, mode="dest"
     )
     return trips
+
+
+def preprocess_df_links(
+    df_links: pd.DataFrame,
+    grid_size: float = 25000.0,
+) -> pd.DataFrame:
+    # get the grid index of each link
+    def get_bbox(df_row):
+        xmin = min(df_row["ax"], df_row["bx"]) / grid_size
+        xmax = max(df_row["ax"], df_row["bx"]) / grid_size
+        ymin = min(df_row["ay"], df_row["by"]) / grid_size
+        ymax = max(df_row["ay"], df_row["by"]) / grid_size
+        xmin_sq = round(xmin, 0)
+        xmax_sq = round(xmax, 0)
+        ymin_sq = round(ymin, 0)
+        ymax_sq = round(ymax, 0)
+        return pd.Series(
+            {"minx_sq": xmin_sq, "maxx_sq": xmax_sq, 
+             "miny_sq": ymin_sq, "maxy_sq": ymax_sq}
+        )
+    
+    df_links[["minx_sq", "maxx_sq", "miny_sq", "maxy_sq"]] = df_links.apply(get_bbox, axis=1)
+    return df_links
+
