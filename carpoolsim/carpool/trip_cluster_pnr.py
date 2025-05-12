@@ -349,14 +349,12 @@ class TripClusterPNR(TripClusterAbstract):
         self._print_matrix(step=5, print_mat=print_mat)
 
         # step 6. filter by the maximum waiting time for the driver at pickup location
-        self.cp_matrix = compute_depart_01_matrix_post_pnr(
-            trip_cluster=self, Delta2=Delta2, Gamma=Gamma
-        )
+        compute_depart_01_matrix_post_pnr(self, Delta2=Delta2, Gamma=Gamma)
         self._print_matrix(step=6, print_mat=print_mat)
 
         # step 7. filter by real computed waiting time (instead of coordinates before)
         compute_reroute_01_matrix_pnr(
-            trip_cluster=self,
+            self,
             delta=delta, gamma=gamma, ita=ita,
             print_mat=print_mat
         )

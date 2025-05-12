@@ -8,7 +8,8 @@ import networkx as nx
 import sqlalchemy
 
 from carpoolsim.carpool.util.network_search import (
-    naive_shortest_path_search
+    naive_shortest_path_search,
+    dynamic_shortest_path_search  # quick but less accurate
 )
 
 
@@ -71,9 +72,9 @@ class TripDemands:
         # search traveling paths for each trip
         for idx, trip in trips.iterrows():
             start_node, end_node = trip['o_node'], trip['d_node']
-            # start_taz, end_taz = trip['orig_taz'], trip['dest_taz']
-            pth_nodes, tt, dst = naive_shortest_path_search(
-                self.network, start_node, end_node
+            start_taz, end_taz = trip['orig_taz'], trip['dest_taz']
+            pth_nodes, tt, dst = dynamic_shortest_path_search(
+                self.network, start_node, end_node, start_taz, end_taz
             )
             soloPaths += [pth_nodes]
             soloTimes += [round(tt, 2)]
