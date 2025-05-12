@@ -161,11 +161,9 @@ def evaluate_individual_trips_sov(
     
     # for each traveler, find its SOV trip time/distances,
     # then find the optimized trip information
-    temp_records = tc.paired_lst
-
     index_paired = []
-    for d, p in temp_records:
-        d_idx, p_idx = tc.int2idx[d], tc.int2idx[p]
+    for d, p in paired_lst:
+        d_idx, p_idx = int2idx[d], int2idx[p]
         role_cols = ['SOV', 'as_passenger', 'partner_idx']
         info_cols = ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
         if d == p:  # drive alone (SOV)
