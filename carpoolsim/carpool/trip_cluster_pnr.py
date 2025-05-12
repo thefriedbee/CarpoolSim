@@ -21,7 +21,6 @@ from carpoolsim.carpool.util.filters_pnr import (
     compute_reroute_01_matrix_pnr,
     compute_depart_01_matrix_post_pnr
 )
-import carpoolsim.carpool_solver.bipartite_solver as tg
 
 
 class TripClusterPNR(TripClusterAbstract):
@@ -342,7 +341,7 @@ class TripClusterPNR(TripClusterAbstract):
 
         # step 4. check departure time difference to filter (for all reasonable pnr stations)
         # this may filter out useful matches for PNR mode
-        self.cp_matrix = compute_depart_01_matrix_pre_pnr(self, Delta1=Delta1)
+        compute_depart_01_matrix_pre_pnr(self, Delta1=Delta1)
         self._print_matrix(step=4, print_mat=print_mat)
 
         # step 5. combine all aforementioned filters to generate one big filter
