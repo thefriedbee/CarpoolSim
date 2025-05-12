@@ -60,11 +60,11 @@ def evaluate_trips(
     return num_travelers, num_paired, ori_tt, new_tt, ori_ml, new_ml
 
 
-def evaluate_individual_trips_both(
+def evaluate_individual_trips_pnr(
     trip_cluster: TripClusterAbstract,
 ) -> pd.DataFrame:
     """
-    After getting optimized results, expand the trip column with before after information for each person.
+    After getting optimized results, record before-after traveling plan of each traveler.
     This code works for general cases.
     :return:
     """
@@ -87,18 +87,16 @@ def evaluate_individual_trips_both(
     # evaluate for each driver-passenger pair (assigned carpool trip)
     for d, p in temp_records:
         d_idx, p_idx = tc.int2idx[d], tc.int2idx[p]
-        # skip SOV trips
-        if d == p:
-            row_d = [
-                tc.soloTimes[p], tc.soloDists[p],
-                tc.soloTimes[p], tc.soloDists[p],
-                -1
-            ]
+        role_cols = ['SOV', 'as_passenger', 'partner_idx']
+        info_cols = ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
+        if d == p:  # SOV trips
+            row_d = [tc.soloTimes[p], tc.soloDists[p],
+                     tc.soloTimes[p], tc.soloDists[p], -1]
             trip_summary_df.loc[
                 d_idx,
                 ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
             ] = row_d
-            trip_summary_df.loc[d_idx, ['SOV', 'as_passenger', 'partner_idx']] = [True, False, d]
+            trip_summary_df.loc[d_idx, role_cols] = [True, False, d]
             index_paired.append(d)
             continue
         
@@ -107,39 +105,25 @@ def evaluate_individual_trips_both(
         sid = tc._check_trips_best_pnr(trip1, trip2, d, p)
 
         # this is strictly the driver's time
-        row_d = [
-            tc.soloTimes[d], tc.soloDists[d],
-            tc.tt_matrix[d, p], tc.ml_matrix[d, p],
-            sid
-        ]
-        # passenger costs assumed a fixed number
-        row_p = [
-            tc.soloTimes[p], tc.soloDists[p],
-            tc.soloTimes[p], tc.soloDists[p],
-            sid
-        ]
+        row_d = [tc.soloTimes[d], tc.soloDists[d],
+                 tc.tt_matrix[d, p], tc.ml_matrix[d, p], sid]
+        row_p = [tc.soloTimes[p], tc.soloDists[p],
+                 tc.soloTimes[p], tc.soloDists[p], sid]
         row_d = [round(r, 3) for r in row_d]
         row_p = [round(r, 3) for r in row_p]
 
-        trip_summary_df.loc[
-            d_idx,
-            ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
-        ] = row_d
-        trip_summary_df.loc[
-            p_idx,
-            ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
-        ] = row_p
-
+        trip_summary_df.loc[d_idx, info_cols] = row_d
+        trip_summary_df.loc[p_idx, info_cols] = row_p
         # finally, update role info
-        trip_summary_df.loc[d_idx, ['SOV', 'as_passenger', 'partner_idx']] = [False, False, p]
-        trip_summary_df.loc[p_idx, ['SOV', 'as_passenger', 'partner_idx']] = [False, True, d]
+        trip_summary_df.loc[d_idx, role_cols] = [False, False, p]
+        trip_summary_df.loc[p_idx, role_cols] = [False, True, d]
         index_paired.append(p)
         index_paired.append(d)
     trip_summary_df = trip_summary_df.loc[index_paired, :]
     return trip_summary_df
 
 
-def evaluate_individual_trips(
+def evaluate_individual_trips_sov(
     trip_cluster: TripClusterAbstract,
 ) -> pd.DataFrame:
     """
@@ -155,8 +139,8 @@ def evaluate_individual_trips(
     trip_summary_df = trips[['new_min']].copy()
     trip_summary_df = trip_summary_df.assign(
         **{'before_time': 0.0, 'before_dist': 0.0,
-            'after_time': 0.0, 'after_dist': 0.0,
-            'SOV': True, 'as_passenger': False, 'partner_idx': 0})
+           'after_time': 0.0, 'after_dist': 0.0,
+           'SOV': True, 'as_passenger': False, 'partner_idx': 0})
     
     # for each traveler, find its SOV trip time/distances,
     # then find the optimized trip information
@@ -165,31 +149,28 @@ def evaluate_individual_trips(
     index_paired = []
     for d, p in temp_records:
         d_idx, p_idx = tc.int2idx[d], tc.int2idx[p]
+        role_cols = ['SOV', 'as_passenger', 'partner_idx']
+        info_cols = ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
         if d == p:  # drive alone (SOV)
-            trip_summary_df.loc[
-                d_idx,
-                ['before_time', 'before_dist', 'after_time', 'after_dist']
-            ] = [tc.soloTimes[d], tc.soloDists[d], tc.soloTimes[d], tc.soloDists[d]]
-            trip_summary_df.loc[d_idx, ['SOV', 'as_passenger', 'partner_idx']] = [True, False, d]
+            row_d = [tc.soloTimes[d], tc.soloDists[d], tc.soloTimes[d], tc.soloDists[d], -1]
+            trip_summary_df.loc[d_idx, info_cols] = row_d
+            trip_summary_df.loc[d_idx, role_cols] = [True, False, d]
             index_paired.append(d)
             continue
         
         # carpool case
         row_d = [tc.soloTimes[d], tc.soloDists[d],
-                 tc.tt_matrix[d, p], tc.ml_matrix[d, p]]
+                 tc.tt_matrix[d, p], tc.ml_matrix[d, p], -1]
         row_d = [round(r, 3) for r in row_d]
         row_p = [tc.soloTimes[p], tc.soloDists[p],
-                 tc.soloTimes[p], tc.soloDists[p]]
+                 tc.soloTimes[p], tc.soloDists[p], -1]
         row_p = [round(r, 3) for r in row_p]        
 
         # for passenger, travel is same as before
-        trip_summary_df.loc[
-            p_idx,
-            ['before_time', 'before_dist', 'after_time', 'after_dist']
-        ] = row_p
+        trip_summary_df.loc[p_idx, info_cols] = row_p
         # finally, update role info
-        trip_summary_df.loc[d_idx, ['SOV', 'as_passenger', 'partner_idx']] = [False, False, p]
-        trip_summary_df.loc[p_idx, ['SOV', 'as_passenger', 'partner_idx']] = [False, True, d]
+        trip_summary_df.loc[d_idx, role_cols] = [False, False, p]
+        trip_summary_df.loc[p_idx, role_cols] = [False, True, d]
         index_paired.append(p)
         index_paired.append(d)
     
