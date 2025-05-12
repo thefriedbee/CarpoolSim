@@ -117,16 +117,13 @@ def compute_depart_01_matrix_post(
     # for post analysis, directly update final cp_matrix
     passenger_time = np.array([soloTimes[i] for i in range(ncol)]).reshape(1, -1)
     passenger_time = np.tile(passenger_time, (nrow, 1))
+
+    cp_matrix = (cp_matrix &
+                 (np.absolute(wait_time_mat) <= Delta2) &
+                 (np.absolute(wait_time_mat/passenger_time) <= Gamma)).astype(np.bool_)
     if default_rule:
         # passenger only waits the driver should wait at most Delta2 minutes
-        cp_matrix = (cp_matrix &
-                     (wait_time_mat >= 0) & (np.absolute(wait_time_mat) <= Delta2) &
-                     (np.absolute(wait_time_mat/passenger_time) <= Gamma)).astype(np.bool_)
-    else:
-        # passenger/driver waits the other party for at most Delta2 minutes
-        cp_matrix = (cp_matrix &
-                     (np.absolute(wait_time_mat) <= Delta2) &
-                     (np.absolute(wait_time_mat/passenger_time) <= Gamma)).astype(np.bool_)
+        cp_matrix = (cp_matrix & (wait_time_mat >= 0)).astype(np.bool_)
     # update information
     tc.cp_matrix = cp_matrix
     return tc
