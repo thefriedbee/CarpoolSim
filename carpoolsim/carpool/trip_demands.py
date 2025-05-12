@@ -8,7 +8,7 @@ import networkx as nx
 import sqlalchemy
 
 from carpoolsim.carpool.util.network_search import (
-    naive_shortest_path_search,
+    naive_shortest_path_search,  # slow dijkstra but accurate
     dynamic_shortest_path_search  # quick but less accurate
 )
 

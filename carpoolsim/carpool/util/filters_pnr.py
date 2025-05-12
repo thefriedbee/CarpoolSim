@@ -2,7 +2,6 @@
 Filter out the carpool assignments for PNR mode.
 """
 import numpy as np
-import pandas as pd
 
 from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
 
