@@ -66,6 +66,14 @@ class TripDemands:
     @property
     def parking_lots(self):
         return self.infrastructure.parking_lots
+    
+    @property
+    def nrow(self):
+        return len(self.trips)
+    
+    @property
+    def ncol(self):
+        return len(self.trips)
 
     def compute_sov_info(self) -> None:
         trips = self.trips

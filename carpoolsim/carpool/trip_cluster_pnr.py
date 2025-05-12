@@ -374,4 +374,6 @@ class TripClusterPNR(TripClusterAbstract):
         # step 8. solve the carpool conflicts
         num_pair, pairs = self.compute_optimal_bipartite()
         self._print_matrix(step=8, print_mat=print_mat)
+        self.num_paired = num_pair
+        self.paired_lst = pairs
         return num_pair, pairs

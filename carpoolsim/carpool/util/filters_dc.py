@@ -9,7 +9,7 @@ def compute_depart_01_matrix_pre(
     trip_cluster: TripClusterAbstract,
     Delta1: float = 15,
     default_rule: bool = True,
-) -> np.ndarray:
+) -> TripClusterAbstract:
     """
     Required: must run self.compute_diagonal function to compute diagonal travel information?
     Filter out carpool trips based on time constraint conditions.
@@ -34,7 +34,8 @@ def compute_depart_01_matrix_pre(
     # default rule: driver should depart earlier (no later) than passenger
     if default_rule:
         cp_matrix = cp_matrix & (mat >= 0)
-    return cp_matrix
+    tc.cp_matrix = cp_matrix
+    return tc
 
 
 def compute_reroute_01_matrix(

@@ -28,6 +28,9 @@ class TripClusterAbstract(ABC):
         self.tt_matrix_p1 = np.full((N, N), np.nan, dtype="float32")
         self.tt_matrix_p2 = np.full((N, N), np.nan, dtype="float32")
         self.tt_matrix_p3 = np.full((N, N), np.nan, dtype="float32")
+        # briefly store the results of carpooling
+        self.num_paired: int = 0
+        self.paired_lst: list[tuple[int, int]] = []
 
     @property
     def shape(self):

@@ -254,7 +254,7 @@ class TripClusterDC(TripClusterAbstract):
         self._print_matrix(step=1, print_mat=print_mat)
 
         # step 2. check departure time difference to filter
-        self.cp_matrix = compute_depart_01_matrix_pre(self, Delta1=Delta1)
+        compute_depart_01_matrix_pre(self, Delta1=Delta1)
         self._print_matrix(step=2, print_mat=print_mat)
 
         # step 3. a set of filter based on Euclidean distance between coordinates
@@ -276,4 +276,6 @@ class TripClusterDC(TripClusterAbstract):
         # step 7. compute optimal bipartite pairing
         num_pair, pairs = self.compute_optimal_bipartite()
         self._print_matrix(step=7, print_mat=print_mat)
+        self.num_paired = num_pair
+        self.paired_lst = pairs
         return num_pair, pairs

@@ -24,7 +24,6 @@ def evaluate_trips(
     :return:
     """
     tc = trip_cluster
-    nrow, ncol = tc.nrow, tc.ncol
 
     def count_parties(paired_lst):
         party_lst = []
