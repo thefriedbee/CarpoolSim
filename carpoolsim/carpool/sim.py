@@ -7,6 +7,11 @@ import numpy as np
 
 from carpoolsim.carpool.trip_demands import TripDemands, Infrastructure
 from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
+from carpoolsim.carpool.util.evaluator import (
+    evaluate_trips,
+    evaluate_individual_trips_pnr,
+    evaluate_individual_trips_sov,
+)
 
 
 @dataclass

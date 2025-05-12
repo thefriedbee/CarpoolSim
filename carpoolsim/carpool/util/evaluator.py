@@ -22,12 +22,17 @@ def evaluate_trips(
     If row not equals to column (in inherited classes), then only report the results of the left square matrix!!!
     :return:
     """
+    # unload data
     tc = trip_cluster
     num_paired, paired_lst = tc.num_paired, tc.paired_lst
     num_travelers = tc.nrow
+    soloTimes = tc.soloTimes
+    soloDists = tc.soloDists
+    tt_matrix = tc.tt_matrix
+    ml_matrix = tc.ml_matrix
     # SOV results (before considering carpooling)
-    ori_tt = sum(tc.soloTimes[p] for p in range(num_travelers))
-    ori_ml = sum(tc.soloDists[p] for p in range(num_travelers))
+    ori_tt = sum(soloTimes[p] for p in range(num_travelers))
+    ori_ml = sum(soloDists[p] for p in range(num_travelers))
 
     # Carpool results (after considering carpooling)
     def get_cp_members(paired_lst):
@@ -42,11 +47,11 @@ def evaluate_trips(
         new_tt, new_ml = 0, 0
         for p in range(num_travelers):
             if p in cp_members:
-                new_tt += tc.tt_matrix[p]
-                new_ml += tc.ml_matrix[p]
+                new_tt += tt_matrix[p]
+                new_ml += ml_matrix[p]
             else:
-                new_tt += tc.soloTimes[p]
-                new_ml += tc.soloDists[p]
+                new_tt += soloTimes[p]
+                new_ml += soloDists[p]
         return new_tt, new_ml
     new_tt, new_ml = get_after_tt_ml(num_travelers, cp_members)
 
@@ -70,6 +75,13 @@ def evaluate_individual_trips_pnr(
     """
     tc = trip_cluster
     trips = tc.trips
+    soloTimes = tc.soloTimes
+    soloDists = tc.soloDists
+    tt_matrix = tc.tt_matrix
+    ml_matrix = tc.ml_matrix
+    cp_pnr = tc.cp_pnr
+    paired_lst = tc.paired_lst
+    int2idx = tc.int2idx
 
     # trick: individual trip evaluation results are stored in a dataframe
     #   with the same number of rows as the original trips
@@ -82,16 +94,15 @@ def evaluate_individual_trips_pnr(
     
     # for each traveler, find its SOV trip time/distances,
     # then find the optimized trip information
-    temp_records = tc.paired_lst
     index_paired = []
     # evaluate for each driver-passenger pair (assigned carpool trip)
-    for d, p in temp_records:
-        d_idx, p_idx = tc.int2idx[d], tc.int2idx[p]
+    for d, p in paired_lst:
+        d_idx, p_idx = int2idx[d], int2idx[p]
         role_cols = ['SOV', 'as_passenger', 'partner_idx']
         info_cols = ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
         if d == p:  # SOV trips
-            row_d = [tc.soloTimes[p], tc.soloDists[p],
-                     tc.soloTimes[p], tc.soloDists[p], -1]
+            row_d = [soloTimes[p], soloDists[p],
+                     soloTimes[p], soloDists[p], -1]
             trip_summary_df.loc[
                 d_idx,
                 ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
@@ -105,10 +116,10 @@ def evaluate_individual_trips_pnr(
         sid = tc.cp_pnr[d, p]
 
         # this is strictly the driver's time
-        row_d = [tc.soloTimes[d], tc.soloDists[d],
-                 tc.tt_matrix[d, p], tc.ml_matrix[d, p], sid]
-        row_p = [tc.soloTimes[p], tc.soloDists[p],
-                 tc.soloTimes[p], tc.soloDists[p], sid]
+        row_d = [soloTimes[d], soloDists[d],
+                 tt_matrix[d, p], ml_matrix[d, p], sid]
+        row_p = [soloTimes[p], soloDists[p],
+                 soloTimes[p], soloDists[p], sid]
         row_d = [round(r, 3) for r in row_d]
         row_p = [round(r, 3) for r in row_p]
 
@@ -133,6 +144,12 @@ def evaluate_individual_trips_sov(
     """
     tc = trip_cluster
     trips = tc.trips
+    soloTimes = tc.soloTimes
+    soloDists = tc.soloDists
+    tt_matrix = tc.tt_matrix
+    ml_matrix = tc.ml_matrix
+    paired_lst = tc.paired_lst
+    int2idx = tc.int2idx
 
     # trick: individual trip evaluation results are stored in a dataframe
     #   with the same number of rows as the original trips
@@ -152,18 +169,18 @@ def evaluate_individual_trips_sov(
         role_cols = ['SOV', 'as_passenger', 'partner_idx']
         info_cols = ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
         if d == p:  # drive alone (SOV)
-            row_d = [tc.soloTimes[d], tc.soloDists[d], tc.soloTimes[d], tc.soloDists[d], -1]
+            row_d = [soloTimes[d], soloDists[d], soloTimes[d], soloDists[d], -1]
             trip_summary_df.loc[d_idx, info_cols] = row_d
             trip_summary_df.loc[d_idx, role_cols] = [True, False, d]
             index_paired.append(d)
             continue
         
         # carpool case
-        row_d = [tc.soloTimes[d], tc.soloDists[d],
-                 tc.tt_matrix[d, p], tc.ml_matrix[d, p], -1]
+        row_d = [soloTimes[d], soloDists[d],
+                 tt_matrix[d, p], ml_matrix[d, p], -1]
         row_d = [round(r, 3) for r in row_d]
-        row_p = [tc.soloTimes[p], tc.soloDists[p],
-                 tc.soloTimes[p], tc.soloDists[p], -1]
+        row_p = [soloTimes[p], soloDists[p],
+                 soloTimes[p], soloDists[p], -1]
         row_p = [round(r, 3) for r in row_p]        
 
         # for passenger, travel is same as before
