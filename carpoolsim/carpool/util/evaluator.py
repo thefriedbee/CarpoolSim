@@ -102,7 +102,7 @@ def evaluate_individual_trips_pnr(
         
         # evaluate carpool trips
         trip1, trip2 = trips.iloc[d], trips.iloc[p]
-        sid = tc._check_trips_best_pnr(trip1, trip2, d, p)
+        sid = tc.cp_pnr[d, p]
 
         # this is strictly the driver's time
         row_d = [tc.soloTimes[d], tc.soloDists[d],

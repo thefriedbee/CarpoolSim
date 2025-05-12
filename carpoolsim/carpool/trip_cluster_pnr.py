@@ -31,13 +31,15 @@ class TripClusterPNR(TripClusterAbstract):
         super().__init__(trip_demands)
         pnr_ncol = len(self.parking_lots)
         N = len(self.td.trips)
+        # information about PNR access for each traveler
         self.pnr_matrix = np.full((N, pnr_ncol), 1).astype(np.bool_)
-        # store all info in one matrix of objects
         self.pnr_access_info = np.empty((N, pnr_ncol), dtype=object)
         # 0-1 matrix for PNR travelers, start with all available and shrink by filters
         self.cp_matrix = np.full((N, N), 1, dtype=np.bool_)
         self.tt_matrix = np.full((N, N), np.nan, dtype="float32")
         self.ml_matrix = np.full((N, N), np.nan, dtype="float32")
+        # "final assigned" PNR between two travelers (an extra matrix for PNR mode)
+        self.cp_pnr = np.full((N, N), -1, dtype="int8")
         # A CENTRIC VIEW OF DRIVERS (3 trip segments of a carpool driver)
         # p1: pickup travel time for driver
         # p2: shared travel time for driver and passenger
@@ -98,14 +100,14 @@ class TripClusterPNR(TripClusterAbstract):
         if trip_row1['pnr'] is None or trip_row2['pnr'] is None:
             return None
         pnr1, pnr2 = trip_row1['pnr'], trip_row2['pnr']
-        lst = list(set(pnr1) & set(pnr2))
-        if len(lst) == 0:
+        pnr_lst = list(set(pnr1) & set(pnr2))
+        if len(pnr_lst) == 0:
             return None
-        if len(lst) == 1:
-            return lst[0]
+        if len(pnr_lst) == 1:
+            return pnr_lst[0]
         # if can share multiple stations
         time_lst = []
-        for i, sid in enumerate(lst):
+        for i, sid in enumerate(pnr_lst):
             # compute on demand
             self.compute_pnr_access(int_idx1, sid)
             self.compute_pnr_access(int_idx2, sid)
@@ -115,7 +117,8 @@ class TripClusterPNR(TripClusterAbstract):
             time_lst.append(tot_time)
         time_lst = np.array(time_lst)
         i = np.argmin(time_lst)
-        return lst[i]
+        self.cp_pnr[int_idx1, int_idx2] = pnr_lst[i]
+        return pnr_lst[i]
 
     def compute_01_matrix_to_station_p1(
         self,
