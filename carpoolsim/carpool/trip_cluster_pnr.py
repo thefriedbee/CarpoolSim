@@ -203,7 +203,6 @@ class TripClusterPNR(TripClusterAbstract):
         self, 
         int_idx1: int, int_idx2: int,
         print_dist: bool = False,
-        fill_mat: bool = True,
         fixed_role: bool = False,
         trips: pd.DataFrame | None = None
     ):
@@ -214,7 +213,6 @@ class TripClusterPNR(TripClusterAbstract):
         Currently, implement first 2 scenarios. 3 and 4 will be done in the future
         :param int_idx1: integer index for the first traveler A
         :param int_idx2: integer index for the second traveler B
-        :param fill_mat: store computation results to matrices
         :param print_dist: print trip plans (for debugging)
 
         :param fixed_role: if True, int_idx1 is for the driver, int_idx2 is for the passenger
@@ -272,20 +270,19 @@ class TripClusterPNR(TripClusterAbstract):
             p1_p_p0_pnr, d2_p_p1_pnr, d2_p_p2_pnr, d2_p_p3_pnr = \
                 calculatePNRCarpool(trip1, trip2, sid, reversed=True)
         # fill the matrix for pnr mode
-        if fill_mat:  # and sid is not None
-            # travel time for the driver during shared time
-            self.tt_matrix[int_idx1][int_idx2] = d1_tt_p1_pnr + d1_tt_p2_pnr + d1_tt_p3_pnr
-            self.tt_matrix_p2[int_idx1][int_idx2] = d1_tt_p2_pnr
-            # total vehicular driving time
-            self.ml_matrix[int_idx1][int_idx2] = d1_ml_p1_pnr + d1_ml_p2_pnr + d1_ml_p3_pnr
-            # self.ml_pnr_matrix_p[int_idx1][int_idx2] = p2_ml_p0_pnr
-            # print(f"ml_matrix[{int_idx1}][{int_idx2}]:{self.ml_matrix[int_idx1][int_idx2]}")
-            if fixed_role is False:
-                # (0.5 * (p1_tt_p0_pnr + d2_tt_p1_pnr))
-                self.tt_matrix[int_idx2][int_idx1] = d2_tt_p1_pnr + d2_tt_p2_pnr + d2_tt_p3_pnr
-                self.tt_matrix_p2[int_idx2][int_idx1] = d2_tt_p2_pnr
-                self.ml_matrix[int_idx2][int_idx1] = d2_ml_p1_pnr + d2_ml_p2_pnr + d2_ml_p3_pnr
-                # self.ml_pnr_matrix_p[int_idx2][int_idx1] = p1_ml_p0_pnr
+        # travel time for the driver during shared time
+        self.tt_matrix[int_idx1][int_idx2] = d1_tt_p1_pnr + d1_tt_p2_pnr + d1_tt_p3_pnr
+        self.tt_matrix_p2[int_idx1][int_idx2] = d1_tt_p2_pnr
+        # total vehicular driving time
+        self.ml_matrix[int_idx1][int_idx2] = d1_ml_p1_pnr + d1_ml_p2_pnr + d1_ml_p3_pnr
+        # self.ml_pnr_matrix_p[int_idx1][int_idx2] = p2_ml_p0_pnr
+        # print(f"ml_matrix[{int_idx1}][{int_idx2}]:{self.ml_matrix[int_idx1][int_idx2]}")
+        if fixed_role is False:
+            # (0.5 * (p1_tt_p0_pnr + d2_tt_p1_pnr))
+            self.tt_matrix[int_idx2][int_idx1] = d2_tt_p1_pnr + d2_tt_p2_pnr + d2_tt_p3_pnr
+            self.tt_matrix_p2[int_idx2][int_idx1] = d2_tt_p2_pnr
+            self.ml_matrix[int_idx2][int_idx1] = d2_ml_p1_pnr + d2_ml_p2_pnr + d2_ml_p3_pnr
+            # self.ml_pnr_matrix_p[int_idx2][int_idx1] = p1_ml_p0_pnr
         # return distances and links of two trips (only for debug/visualization)
         # dists_1, links_1, dists_2, links_2
         if fixed_role is False:

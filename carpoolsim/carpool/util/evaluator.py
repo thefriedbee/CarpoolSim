@@ -10,7 +10,7 @@ def evaluate_trips(
     verbose: bool = False,
 ) -> tuple[int, int, float, float, float, float, int]:
     """
-    Evaluate the assignment's performances. Interested in:
+    Evaluate the assignment's performances at the aggregated level. Interested in:
     (1) The changes in total vehicular travel time
     (2) The changes in total travel time
     (3) Number of carpool pairs matched
@@ -26,9 +26,10 @@ def evaluate_trips(
     num_paired, paired_lst = tc.num_paired, tc.paired_lst
     num_travelers = tc.nrow
     # SOV results (before considering carpooling)
-    ori_tt = sum(tc.soloTimes[p] for p in num_travelers)
-    ori_ml = sum(tc.soloDists[p] for p in num_travelers)
+    ori_tt = sum(tc.soloTimes[p] for p in range(num_travelers))
+    ori_ml = sum(tc.soloDists[p] for p in range(num_travelers))
 
+    # Carpool results (after considering carpooling)
     def get_cp_members(paired_lst):
         cp_members = []
         for pr in paired_lst:
@@ -37,7 +38,6 @@ def evaluate_trips(
         return cp_members
     cp_members = get_cp_members(paired_lst)
 
-    # Carpool results (after considering carpooling)
     def get_after_tt_ml(num_travelers, cp_members):
         new_tt, new_ml = 0, 0
         for p in range(num_travelers):
@@ -57,179 +57,142 @@ def evaluate_trips(
         print_str += f"Before: Total VTM is {ori_ml:.2f} miles;\n"
         print_str += f"After: Total VTM is {new_ml:.2f} miles."
         print(print_str)
-
     return num_travelers, num_paired, ori_tt, new_tt, ori_ml, new_ml
 
 
 def evaluate_individual_trips_both(
     trip_cluster: TripClusterAbstract,
-    verbose: bool = False,
-    use_bipartite: bool = False,
-    trips: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
     After getting optimized results, expand the trip column with before after information for each person.
     This code works for general cases.
-
-    If row not equals to column (in inherited classes), then only report the results of the lower left of the
-    square matrix!!!
-    :param verbose:
-    :param use_bipartite:
     :return:
     """
     tc = trip_cluster
-    if trips is None:
-        trips = tc.trips
+    trips = tc.trips
+
+    # trick: individual trip evaluation results are stored in a dataframe
+    #   with the same number of rows as the original trips
     trip_summary_df = trips[['new_min']].copy()
-    # init new columns (before/after travel time and distances)
-    # values are placeholder
     trip_summary_df = trip_summary_df.assign(
         **{'before_time': 0.0, 'before_dist': 0.0,
-            'after_time': 0.0, 'after_dist': 0.0,
-            'SOV': True, 'as_passenger': False,
-            'partner_idx': 0, 'station': -1})
+           'after_time': 0.0, 'after_dist': 0.0,
+           'SOV': True, 'as_passenger': False,
+           'partner_idx': 0, 'station': -1})
+    
     # for each traveler, find its SOV trip time/distances,
     # then find the optimized trip information
-    if use_bipartite is False:
-        temp_records = tc.result_lst
-    else:
-        temp_records = tc.result_lst_bipartite
-
+    temp_records = tc.paired_lst
     index_paired = []
-    for d_idx, p_idx in temp_records:
-        d, p = tc.int2idx[d_idx], tc.int2idx[p_idx]
-        choice = tc.choice_matrix[d_idx][p_idx]
-        sid = -1
-        if choice == 1:
-            trip1, trip2 = trips.loc[d], trips.loc[p]
-            sid = tc._check_trips_best_pnr(trip1, trip2, d_idx, p_idx)
-            # note: need to select mode based on the choice matrix
+    # evaluate for each driver-passenger pair (assigned carpool trip)
+    for d, p in temp_records:
+        d_idx, p_idx = tc.int2idx[d], tc.int2idx[p]
+        # skip SOV trips
+        if d == p:
+            row_d = [
+                tc.soloTimes[p], tc.soloDists[p],
+                tc.soloTimes[p], tc.soloDists[p],
+                -1
+            ]
+            trip_summary_df.loc[
+                d_idx,
+                ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
+            ] = row_d
+            trip_summary_df.loc[d_idx, ['SOV', 'as_passenger', 'partner_idx']] = [True, False, d]
+            index_paired.append(d)
+            continue
+        
+        # evaluate carpool trips
+        trip1, trip2 = trips.iloc[d], trips.iloc[p]
+        sid = tc._check_trips_best_pnr(trip1, trip2, d, p)
 
         # this is strictly the driver's time
         row_d = [
-            tc.soloTimes[d_idx], tc.soloDists[d_idx],
-            tc.tt_matrix_all[d_idx, p_idx], tc.ml_matrix_all[d_idx, p_idx],
+            tc.soloTimes[d], tc.soloDists[d],
+            tc.tt_matrix[d, p], tc.ml_matrix[d, p],
             sid
         ]
-
         # passenger costs assumed a fixed number
-        # (need to recalculate passenger's new travel time in post analysis)
-        row_p = [tc.soloTimes[p_idx], tc.soloDists[p_idx],
-                 tc.soloTimes[p_idx], tc.soloDists[p_idx], sid]
-
+        row_p = [
+            tc.soloTimes[p], tc.soloDists[p],
+            tc.soloTimes[p], tc.soloDists[p],
+            sid
+        ]
         row_d = [round(r, 3) for r in row_d]
         row_p = [round(r, 3) for r in row_p]
-        if verbose:
-            print(d_idx, p_idx)
-            print(row_d)
 
         trip_summary_df.loc[
-            d,
+            d_idx,
             ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
         ] = row_d
+        trip_summary_df.loc[
+            p_idx,
+            ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
+        ] = row_p
 
-        if p_idx != d_idx:  # carpool, not SOV in after case
-            # for passenger, travel is same as before
-            if verbose:
-                print(row_p)
-            trip_summary_df.loc[
-                p,
-                ['before_time', 'before_dist', 'after_time', 'after_dist', 'station']
-            ] = row_p
-
-            # finally, update role info
-            trip_summary_df.loc[d, ['SOV', 'as_passenger', 'partner_idx']] = [False, False, p]
-            trip_summary_df.loc[p, ['SOV', 'as_passenger', 'partner_idx']] = [False, True, d]
-            index_paired.append(p)
-            index_paired.append(d)
-        else:  # drive alone (SOV)
-            # partner is the driver herself
-            trip_summary_df.loc[d, ['SOV', 'as_passenger', 'partner_idx']] = [True, False, d]
-            index_paired.append(p)
-    if verbose:
-        print('LP output results are updated.')
+        # finally, update role info
+        trip_summary_df.loc[d_idx, ['SOV', 'as_passenger', 'partner_idx']] = [False, False, p]
+        trip_summary_df.loc[p_idx, ['SOV', 'as_passenger', 'partner_idx']] = [False, True, d]
+        index_paired.append(p)
+        index_paired.append(d)
     trip_summary_df = trip_summary_df.loc[index_paired, :]
     return trip_summary_df
 
 
 def evaluate_individual_trips(
     trip_cluster: TripClusterAbstract,
-    verbose: bool = False,
-    use_bipartite: bool = False
 ) -> pd.DataFrame:
     """
     After getting optimized results, expand the trip column with before after information for each person.
     This code works for general cases.
-
-    If row not equals to column (in inherited classes), then only report the results of the lower left of the
-    square matrix!!!
-    :param verbose:
-    :param use_bipartite:
     :return:
     """
     tc = trip_cluster
-    nrow, ncol = tc.nrow, tc.ncol
-    # left_trips_filt = self.trips.SOV & (self.trips.new_min > self.t0 + self.epsilon)
-    # dropped_indexes = self.trips.loc[~left_trips_filt, :].index.tolist()
-    trip_summary_df = tc.trips[['new_min']].copy()
+    trips = tc.trips
 
-    # init new columns (before/after travel time and distances)
-    # values are placeholder
+    # trick: individual trip evaluation results are stored in a dataframe
+    #   with the same number of rows as the original trips
+    trip_summary_df = trips[['new_min']].copy()
     trip_summary_df = trip_summary_df.assign(
         **{'before_time': 0.0, 'before_dist': 0.0,
             'after_time': 0.0, 'after_dist': 0.0,
             'SOV': True, 'as_passenger': False, 'partner_idx': 0})
-    # downcast to save memory
-    trip_summary_df = trip_summary_df.astype(
-        {"before_time": "float32", "before_dist": "float32",
-            'after_time': "float32", 'after_dist': "float32",
-            'partner_idx': "int32"})
+    
     # for each traveler, find its SOV trip time/distances,
     # then find the optimized trip information
-    if use_bipartite is False:
-        temp_records = tc.result_lst
-    else:
-        temp_records = tc.result_lst_bipartite
-    # print('assignment list is:', temp_records)
+    temp_records = tc.paired_lst
 
     index_paired = []
-    # index_int_paired = []
-    for d_idx, p_idx in temp_records:
-        d, p = tc.int2idx[d_idx], tc.int2idx[p_idx]
-        row_d = [tc.soloTimes[d_idx], tc.soloDists[d_idx],
-                 tc.tt_matrix[d_idx, p_idx], tc.ml_matrix[d_idx, p_idx]]
-        row_d = [round(r, 3) for r in row_d]
-
-        row_p = [tc.soloTimes[p_idx], tc.soloDists[p_idx],
-                 tc.soloTimes[p_idx], tc.soloDists[p_idx]]
-        row_p = [round(r, 3) for r in row_p]
-
-        trip_summary_df.loc[
-            d,
-            ['before_time', 'before_dist', 'after_time', 'after_dist']
-        ] = row_d
-
-        if p_idx != d_idx:  # carpool, not SOV in after case
-            # for passenger, travel is same as before
-            if verbose:
-                # print(row_p)
-                pass
+    for d, p in temp_records:
+        d_idx, p_idx = tc.int2idx[d], tc.int2idx[p]
+        if d == p:  # drive alone (SOV)
             trip_summary_df.loc[
-                p,
+                d_idx,
                 ['before_time', 'before_dist', 'after_time', 'after_dist']
-            ] = row_p
-
-            # finally, update role info
-            trip_summary_df.loc[d, ['SOV', 'as_passenger', 'partner_idx']] = [False, False, p]
-            trip_summary_df.loc[p, ['SOV', 'as_passenger', 'partner_idx']] = [False, True, d]
-            index_paired.append(p)
+            ] = [tc.soloTimes[d], tc.soloDists[d], tc.soloTimes[d], tc.soloDists[d]]
+            trip_summary_df.loc[d_idx, ['SOV', 'as_passenger', 'partner_idx']] = [True, False, d]
             index_paired.append(d)
-            # index_int_paired.append(p_idx)
-            # index_int_paired.append(d_idx)
-        else:  # drive alone (SOV)
-            # partner is the driver herself
-            trip_summary_df.loc[d, ['SOV', 'as_passenger', 'partner_idx']] = [True, False, d]
-            index_paired.append(p)
+            continue
+        
+        # carpool case
+        row_d = [tc.soloTimes[d], tc.soloDists[d],
+                 tc.tt_matrix[d, p], tc.ml_matrix[d, p]]
+        row_d = [round(r, 3) for r in row_d]
+        row_p = [tc.soloTimes[p], tc.soloDists[p],
+                 tc.soloTimes[p], tc.soloDists[p]]
+        row_p = [round(r, 3) for r in row_p]        
+
+        # for passenger, travel is same as before
+        trip_summary_df.loc[
+            p_idx,
+            ['before_time', 'before_dist', 'after_time', 'after_dist']
+        ] = row_p
+        # finally, update role info
+        trip_summary_df.loc[d_idx, ['SOV', 'as_passenger', 'partner_idx']] = [False, False, p]
+        trip_summary_df.loc[p_idx, ['SOV', 'as_passenger', 'partner_idx']] = [False, True, d]
+        index_paired.append(p)
+        index_paired.append(d)
+    
     trip_summary_df = trip_summary_df.loc[index_paired, :]
     return trip_summary_df
 
