@@ -306,4 +306,8 @@ def pnr_add_projection(
         'node_t': 't',
         'dist': 'd'
     })
+
+    # make sure same results if this function is called multiple times
+    duplicate_columns = pnr_lots.columns.duplicated()
+    pnr_lots = pnr_lots.loc[:, ~duplicate_columns]
     return pnr_lots
