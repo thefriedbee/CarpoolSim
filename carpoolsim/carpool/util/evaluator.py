@@ -8,7 +8,6 @@ from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
 def evaluate_trips(
     trip_cluster: TripClusterAbstract,
     verbose: bool = False,
-    use_bipartite: bool = False
 ) -> tuple[int, int, float, float, float, float, int]:
     """
     Evaluate the assignment's performances. Interested in:
@@ -24,59 +23,42 @@ def evaluate_trips(
     :return:
     """
     tc = trip_cluster
+    num_paired, paired_lst = tc.num_paired, tc.paired_lst
+    num_travelers = tc.nrow
+    # SOV results (before considering carpooling)
+    ori_tt = sum(tc.soloTimes[p] for p in num_travelers)
+    ori_ml = sum(tc.soloDists[p] for p in num_travelers)
 
-    def count_parties(paired_lst):
-        party_lst = []
-        tot_count, num_paired = 0, 0
+    def get_cp_members(paired_lst):
+        cp_members = []
         for pr in paired_lst:
-            if pr[0] == pr[1]:
-                tot_count += 1
-                party_lst.append(pr[0])
+            if pr[0] != pr[1]:
+                cp_members += [pr[0], pr[1]]
+        return cp_members
+    cp_members = get_cp_members(paired_lst)
+
+    # Carpool results (after considering carpooling)
+    def get_after_tt_ml(num_travelers, cp_members):
+        new_tt, new_ml = 0, 0
+        for p in range(num_travelers):
+            if p in cp_members:
+                new_tt += tc.tt_matrix[p]
+                new_ml += tc.ml_matrix[p]
             else:
-                tot_count += 2
-                num_paired += 2
-                party_lst.append(pr[0])
-                party_lst.append(pr[1])
-        return tot_count, num_paired, party_lst
+                new_tt += tc.soloTimes[p]
+                new_ml += tc.soloDists[p]
+        return new_tt, new_ml
+    new_tt, new_ml = get_after_tt_ml(num_travelers, cp_members)
 
-    if use_bipartite:
-        tot_count, num_paired, party_lst = count_parties(tc.result_lst_bipartite)
-        rl = tc.result_lst_bipartite
-    else:
-        tot_count, num_paired, party_lst = count_parties(tc.result_lst)
-        rl = tc.result_lst
-    # special case: If num of columns is greater than rows, then self pairs in the right part should
-    # not be concluded in the evaluation
-    ori_tt = sum(tc.soloTimes[p] for p in party_lst)
-    ori_ml = sum(tc.soloDists[p] for p in party_lst)
-    new_tt, new_ml = 0, 0
-    sid = None  # PNR station id
-    for p in rl:
-        if tc.choice_matrix[p] == 0:
-            # print('simple:', p, self.tt_matrix[p], self.ml_matrix[p])
-            new_tt += tc.tt_matrix[p]
-            new_ml += tc.ml_matrix[p]
-        elif tc.choice_matrix[p] == 1:
-            # print('shared:', p, self.tt_pnr_matrix[p], self.ml_pnr_matrix[p])
-            new_tt += tc.tt_pnr_matrix[p]
-            new_ml += tc.ml_pnr_matrix[p]  # + self.ml_pnr_matrix_p[p]
-            trip1, trip2 = tc.trips.iloc[p[0], :], tc.trips.iloc[p[1], :]
-            sid = tc._check_trips_best_pnr(trip1, trip2, p[0], p[1])
-        else:  # no assign, drive alone
-            # print('drive alone')
-            new_tt += tc.tt_pnr_matrix[p]
-            new_ml += tc.ml_pnr_matrix[p]  # + self.ml_pnr_matrix_p[p]
     if verbose:
-        print("{} persons found carpooling in a cluster with {} persons".format(num_paired, tot_count))
-        print_str = "Original total vehicular travel time is {} veh-min;\n"
-        print_str += "New total vehicular travel time is {} veh-min "
-        print(print_str.format(round(ori_tt, 2), round(new_tt, 2)))
+        print(f"{num_paired} persons found carpooling in a cluster with {num_travelers} persons")
+        print_str = f"Before: Total VTT is {ori_tt:.2f} veh-min;\n"
+        print_str += f"After: Total VTT is {new_tt:.2f} veh-min;\n"
+        print_str += f"Before: Total VTM is {ori_ml:.2f} miles;\n"
+        print_str += f"After: Total VTM is {new_ml:.2f} miles."
+        print(print_str)
 
-        print_str = "Original total vehicular travel mileage is {} miles;\n"
-        print_str += "New total vehicular travel mileage is {} miles."
-        print(print_str.format(round(ori_ml, 2), round(new_ml, 2)))
-
-    return tot_count, num_paired, ori_tt, new_tt, ori_ml, new_ml, sid
+    return num_travelers, num_paired, ori_tt, new_tt, ori_ml, new_ml
 
 
 def evaluate_individual_trips_both(
