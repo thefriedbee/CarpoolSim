@@ -3,6 +3,7 @@ A basic class to store basic information of a set of SOV travelers.
 
 This is a simple class just to store the basic information of travelers.
 """
+import numpy as np
 import pandas as pd
 import networkx as nx
 import sqlalchemy
@@ -83,3 +84,22 @@ class TripDemands:
         self.soloPaths = soloPaths
         self.soloTimes = soloTimes
         self.soloDists = soloDists
+
+    def sel_by_time(
+        self, 
+        time_range: tuple[int, int]
+    ) -> 'TripDemands':
+        """
+        Select trips by time range.
+        """
+        t0, t1 = time_range
+        filt = (self.trips['new_min'] >= t0) & (self.trips['new_min'] <= t1)
+        trips = self.trips[filt]
+        # initialize the sub-demands
+        sub_demands = TripDemands(trips, self.infrastructure)
+        # also, copy the path information
+        int_idx = np.argwhere(filt).flatten()
+        sub_demands.soloPaths = self.soloPaths[int_idx]
+        sub_demands.soloTimes = self.soloTimes[int_idx]
+        sub_demands.soloDists = self.soloDists[int_idx]
+        return sub_demands
