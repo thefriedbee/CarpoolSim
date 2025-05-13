@@ -38,26 +38,3 @@ class RerouteFilter(Enum):
     gamma = auto()  # time window
     ita = auto()  # shared carpool time
 
-
-# ====== Below are dataclasses ======
-@dataclass
-class Config:
-    # basic settings
-    match_mode: list[MatchMode]
-    solve_method: SolveMethod
-    coordinate_filter: list[CoordinateFilter]
-    time_filter: list[TimeFilter]
-    reroute_filter: list[RerouteFilter]
-
-
-
-@dataclass
-class RunSimConfigWithTime:
-    delta_t: float  # max number of minutes in the near future for passenger to send travel request
-    epsilon_t: float  # the max #minutes in the near future for drivers to depart
-    w: float  # the #minutes to update simulation clock (granularity)
-
-
-
-
-
