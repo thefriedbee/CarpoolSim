@@ -241,7 +241,7 @@ class TripClusterDC(TripClusterAbstract):
         self, mu1: float = 1.5, mu2: float = 0.1, dst_max: float = 5 * 5280,
         Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
         delta: float = 15, gamma: float = 1.5, ita: float = 0.5,
-        print_mat: bool = False,
+        print_mat: bool = False, run_solver: bool = True,
     ) -> tuple[int, list[tuple[int, int]]]:
         # step 1. compute drive alone info
         self.td.compute_sov_info()
@@ -270,8 +270,10 @@ class TripClusterDC(TripClusterAbstract):
         self._print_matrix(step=6, print_mat=print_mat)
 
         # step 7. compute optimal bipartite pairing
-        num_pair, pairs = self.compute_optimal_bipartite()
-        self._print_matrix(step=7, print_mat=print_mat)
-        self.num_paired = num_pair
-        self.paired_lst = pairs
-        return num_pair, pairs
+        if run_solver:
+            num_pair, pairs = self.compute_optimal_bipartite()
+            self._print_matrix(step=7, print_mat=print_mat)
+            self.num_paired = num_pair
+            self.paired_lst = pairs
+            return num_pair, pairs
+        return None, None

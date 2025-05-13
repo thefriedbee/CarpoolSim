@@ -30,7 +30,7 @@ class Config:
         # time difference
         self.Delta1 = 15  # SOV departure time difference
         self.Delta2 = 10  # carpool waiting time
-        self.Gamma = 0.2
+        self.Gamma = 0.2  # waiting time / passenger travel time
         # reroute time constraints
         self.delta = 10
         self.gamma = 1.3

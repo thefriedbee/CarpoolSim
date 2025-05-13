@@ -22,7 +22,6 @@ def evaluate_individual_trips_sim(
     soloTimes = td.soloTimes
     soloDists = td.soloDists
     mc_matrix = st.mc_matrix  # mode choice matrix
-    cp_matrix = st.cp_matrix
     tt_matrix = st.tt_matrix
     ml_matrix = st.ml_matrix
     cp_pnr = st.cp_pnr

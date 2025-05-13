@@ -306,7 +306,7 @@ class TripClusterPNR(TripClusterAbstract):
         self, mu1: float = 1.3, mu2: float = 0.1, dst_max: float = 5 * 5280,
         Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
         delta: float = 15, gamma: float =1.5, ita: float = 0.5,
-        print_mat: bool = True,
+        print_mat: bool = True, run_solver: bool = True,
     ):
         """
         For the park and ride case, use the same set of filtering parameters for normal case (6 steps).
@@ -356,8 +356,10 @@ class TripClusterPNR(TripClusterAbstract):
         self._print_matrix(step=7, print_mat=print_mat)
 
         # step 8. solve the carpool conflicts
-        num_pair, pairs = self.compute_optimal_bipartite()
-        self._print_matrix(step=8, print_mat=print_mat)
-        self.num_paired = num_pair
-        self.paired_lst = pairs
-        return num_pair, pairs
+        if run_solver:
+            num_pair, pairs = self.compute_optimal_bipartite()
+            self._print_matrix(step=8, print_mat=print_mat)
+            self.num_paired = num_pair
+            self.paired_lst = pairs
+            return num_pair, pairs
+        return None, None
