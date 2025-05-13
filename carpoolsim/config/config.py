@@ -10,6 +10,15 @@ class CPMode(Enum):
     DC = 2
     PNR = 3
 
+CPMode_MAP = {
+    "SOV": CPMode.SOV,
+    "sov": CPMode.SOV,
+    "DC": CPMode.DC,
+    "dc": CPMode.DC,
+    "PNR": CPMode.PNR,
+    "pnr": CPMode.PNR,
+}
+
 
 class SolveMethod(Enum):
     # available solvers
@@ -37,7 +46,12 @@ class Config:
         self.ita = 0.9  # shared travel time / passenger travel time
         self.ita_pnr = 0.5  # shared travel time / passenger travel time (for PNR)
 
-
+    def set_config(self, config: dict):
+        for key, value in config.items():
+            if key == "modes":
+                self.modes = [CPMode_MAP[mode] for mode in value]
+            else:
+                setattr(self, key, value)
 
 
 
