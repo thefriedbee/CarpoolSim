@@ -117,7 +117,9 @@ def evaluate_individual_trips_sim(
         elif mc_matrix[d, p] == CPMode.PNR.value:  # PNR mode
             sid = cp_pnr[d, p]
             mode = CPMode.PNR
-            row_d = [soloTimes[d], soloDists[d], tt_matrix[d, p], ml_matrix[d, p], sid]
+            pnr_pass_time, pnr_pass_dist = pnr_access_info[d, sid][3:5]
+            print(tt_matrix[d, p], tt_matrix[p, d])
+            row_d = [soloTimes[d], soloDists[d], pnr_pass_time, pnr_pass_dist, sid]
             pnr_pass_time, pnr_pass_dist = pnr_access_info[p, sid][3:5]
             row_p = [soloTimes[p], soloDists[p], pnr_pass_time, pnr_pass_dist, sid]
         else:

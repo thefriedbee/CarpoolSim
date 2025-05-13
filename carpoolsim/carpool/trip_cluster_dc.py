@@ -103,15 +103,11 @@ class TripClusterDC(TripClusterAbstract):
         self.tt_matrix_p3[int_idx1][int_idx2] = d1_tt_p3
         self.ml_matrix[int_idx1][int_idx2] = d1_ml_p1 + d1_ml_p2 + d1_ml_p3
         # print(f"ml_matrix[{int_idx1}][{int_idx2}]:{self.ml_matrix[int_idx1][int_idx2]}")
-        if not fixed_role:
+        if fixed_role is False:
             self.tt_matrix[int_idx2][int_idx1] = d2_tt_p1 + d2_tt_p2 + d2_tt_p3
             self.tt_matrix_p1[int_idx2][int_idx1] = d2_tt_p1
             self.tt_matrix_p3[int_idx2][int_idx1] = d2_tt_p3
             self.ml_matrix[int_idx2][int_idx1] = d2_ml_p1 + d2_ml_p2 + d2_ml_p3
-            # print(f"ml_matrix[idx2][idx1]:{self.ml_matrix[int_idx2][int_idx1]}")
-
-        # dists_1, links_1, dists_2, links_2
-        if not fixed_role:
             return (d1_ml_p1 + d1_ml_p2 + d1_ml_p3), (d1_p_p1[:-1] + d1_p_p2[:-1] + d1_p_p3), \
                    (d2_ml_p1 + d2_ml_p2 + d2_ml_p3), (d2_p_p1[:-1] + d2_p_p2[:-1] + d2_p_p3)
         return (d1_ml_p1 + d1_ml_p2 + d1_ml_p3), (d1_p_p1[:-1] + d1_p_p2[:-1] + d1_p_p3)

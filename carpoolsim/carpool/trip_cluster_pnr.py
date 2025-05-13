@@ -263,41 +263,32 @@ class TripClusterPNR(TripClusterAbstract):
         # check if two trips can share one pnr station
         sid = self._check_trips_best_pnr(trip1, trip2, int_idx1, int_idx2)  # get the feasible midpoints
         if sid is None or sid == -1:
-            # print("No feasible join carpool plan using PNR found", end=";")
             return None
-        # else:  # contain feasible midpoints
-        p2_tt_p0_pnr, d1_tt_p1_pnr, d1_tt_p2_pnr, d1_tt_p3_pnr, \
-        p2_ml_p0_pnr, d1_ml_p1_pnr, d1_ml_p2_pnr, d1_ml_p3_pnr, \
-        p2_p_p0_pnr, d1_p_p1_pnr, d1_p_p2_pnr, d1_p_p3_pnr = \
+        
+        p2_tt_p0, d1_tt_p1, d1_tt_p2, d1_tt_p3, \
+        p2_ml_p0, d1_ml_p1, d1_ml_p2, d1_ml_p3, \
+        p2_p_p0, d1_p_p1, d1_p_p2, d1_p_p3 = \
             calculatePNRCarpool(trip1, trip2, sid, reversed=False)
-        if fixed_role is False:
-            p1_tt_p0_pnr, d2_tt_p1_pnr, d2_tt_p2_pnr, d2_tt_p3_pnr, \
-            p1_ml_p0_pnr, d2_ml_p1_pnr, d2_ml_p2_pnr, d2_ml_p3_pnr, \
-            p1_p_p0_pnr, d2_p_p1_pnr, d2_p_p2_pnr, d2_p_p3_pnr = \
-                calculatePNRCarpool(trip1, trip2, sid, reversed=True)
+        
         # fill the matrix for pnr mode
         # travel time for the driver during shared time
-        self.tt_matrix[int_idx1][int_idx2] = d1_tt_p1_pnr + d1_tt_p2_pnr + d1_tt_p3_pnr
-        self.tt_matrix_p2[int_idx1][int_idx2] = d1_tt_p2_pnr
-        # total vehicular driving time
-        self.ml_matrix[int_idx1][int_idx2] = d1_ml_p1_pnr + d1_ml_p2_pnr + d1_ml_p3_pnr
-        # self.ml_pnr_matrix_p[int_idx1][int_idx2] = p2_ml_p0_pnr
-        # print(f"ml_matrix[{int_idx1}][{int_idx2}]:{self.ml_matrix[int_idx1][int_idx2]}")
+        self.tt_matrix[int_idx1][int_idx2] = d1_tt_p1 + d1_tt_p2 + d1_tt_p3
+        self.tt_matrix_p2[int_idx1][int_idx2] = d1_tt_p2
+        self.ml_matrix[int_idx1][int_idx2] = d1_ml_p1 + d1_ml_p2 + d1_ml_p3
         if fixed_role is False:
-            # (0.5 * (p1_tt_p0_pnr + d2_tt_p1_pnr))
-            self.tt_matrix[int_idx2][int_idx1] = d2_tt_p1_pnr + d2_tt_p2_pnr + d2_tt_p3_pnr
-            self.tt_matrix_p2[int_idx2][int_idx1] = d2_tt_p2_pnr
-            self.ml_matrix[int_idx2][int_idx1] = d2_ml_p1_pnr + d2_ml_p2_pnr + d2_ml_p3_pnr
-            # self.ml_pnr_matrix_p[int_idx2][int_idx1] = p1_ml_p0_pnr
-        # return distances and links of two trips (only for debug/visualization)
-        # dists_1, links_1, dists_2, links_2
-        if fixed_role is False:
-            return ((p2_ml_p0_pnr + d1_ml_p1_pnr + d1_ml_p2_pnr + d1_ml_p3_pnr),
-                    (p2_p_p0_pnr, d1_p_p1_pnr, d1_p_p2_pnr, d1_p_p3_pnr),
-                    (p1_ml_p0_pnr + d2_ml_p1_pnr + d2_ml_p2_pnr + d2_ml_p3_pnr),
-                    (p1_p_p0_pnr, d2_p_p1_pnr, d2_p_p2_pnr, d2_p_p3_pnr), sid)
-        return ((p2_ml_p0_pnr + d1_ml_p1_pnr + d1_ml_p2_pnr + d1_ml_p3_pnr),
-                (p2_p_p0_pnr, d1_p_p1_pnr, d1_p_p2_pnr, d1_p_p3_pnr), sid)
+            p1_tt_p0, d2_tt_p1, d2_tt_p2, d2_tt_p3, \
+            p1_ml_p0, d2_ml_p1, d2_ml_p2, d2_ml_p3, \
+            p1_p_p0, d2_p_p1, d2_p_p2, d2_p_p3 = \
+                calculatePNRCarpool(trip1, trip2, sid, reversed=True)
+            self.tt_matrix[int_idx2][int_idx1] = d2_tt_p1 + d2_tt_p2 + d2_tt_p3
+            self.tt_matrix_p2[int_idx2][int_idx1] = d2_tt_p2
+            self.ml_matrix[int_idx2][int_idx1] = d2_ml_p1 + d2_ml_p2 + d2_ml_p3
+            return ((p2_ml_p0 + d1_ml_p1 + d1_ml_p2 + d1_ml_p3),
+                    (p2_p_p0, d1_p_p1, d1_p_p2, d1_p_p3),
+                    (p1_ml_p0 + d2_ml_p1 + d2_ml_p2 + d2_ml_p3),
+                    (p1_p_p0, d2_p_p1, d2_p_p2, d2_p_p3), sid)
+        return ((p2_ml_p0 + d1_ml_p1 + d1_ml_p2 + d1_ml_p3),
+                (p2_p_p0, d1_p_p1, d1_p_p2, d1_p_p3), sid)
 
     def compute_carpoolable_trips(self, reset_off_diag: bool = False) -> None:
         """
