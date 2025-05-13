@@ -13,28 +13,39 @@ class CPMode(Enum):
 
 class SolveMethod(Enum):
     # available solvers
-    bipartite = auto()  # bipartite matching
-    lp = auto()  # linear programming solver
+    bt = 1  # bipartite matching
+    lp = 2  # linear programming solver
 
 
-class CoordinateFilter(Enum):
-    # constraints the filter out unavailable carpool matches
-    # available coordinate filters (in Manhattan distance)
-    mu1 = auto()  # shared carpool distance / total distance
-    mu2 = auto()  # travel distance of passenger after dropoff
-    dist_max = auto()  # r: Euclidean distance between driver's origin and pickup location
+class Config:
+    def __init__(self):
+        self.solver = SolveMethod.bt
+        self.mode = CPMode.PNR
+        self.print_mat = False
+        self.plot_all = False
+        # Euclidean distance filter
+        self.mu1 = 1.5
+        self.mu2 = 0.1
+        self.dist_max = 5*5280
+        # time difference
+        self.Delta1 = 15  # SOV departure time difference
+        self.Delta2 = 10  # carpool waiting time
+        self.Gamma = 0.2
+        # reroute time constraints
+        self.delta = 10
+        self.gamma = 1.3
+        self.ita = 0.9
+        # self.ita_pnr = 0.5
+        pass
+
+    pass
 
 
-class TimeFilter(Enum):
-    # time constraint
-    Delta1 = auto()  # control passenger/driver's departure time difference
-    Delta2 = auto()  # control driver's maximum waiting time
-    Gamma = auto()
 
 
-class RerouteFilter(Enum):
-    # reroute time constraints
-    delta = auto()  # departure time difference
-    gamma = auto()  # time window
-    ita = auto()  # shared carpool time
+
+
+
+
+
 
