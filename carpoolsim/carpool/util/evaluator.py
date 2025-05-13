@@ -81,6 +81,7 @@ def evaluate_individual_trips_sim(
     soloTimes = td.soloTimes
     soloDists = td.soloDists
     mc_matrix = st.mc_matrix  # mode choice matrix
+    cp_matrix = st.cp_matrix
     tt_matrix = st.tt_matrix
     ml_matrix = st.ml_matrix
     cp_pnr = st.cp_pnr
@@ -118,7 +119,7 @@ def evaluate_individual_trips_sim(
             sid = cp_pnr[d, p]
             mode = CPMode.PNR
             pnr_pass_time, pnr_pass_dist = pnr_access_info[d, sid][3:5]
-            print(tt_matrix[d, p], tt_matrix[p, d])
+            print(f"{d}, {p}, {sid}, {tt_matrix[d, p]}, {tt_matrix[p, d]}")
             row_d = [soloTimes[d], soloDists[d], pnr_pass_time, pnr_pass_dist, sid]
             pnr_pass_time, pnr_pass_dist = pnr_access_info[p, sid][3:5]
             row_p = [soloTimes[p], soloDists[p], pnr_pass_time, pnr_pass_dist, sid]

@@ -49,7 +49,9 @@ def generate_pnr_trip_map_filt(
     # finally, prepare the big 0-1 matrix between travelers
     # given that they can share at least one PNR station
     temp_cp_matrix = ((pnr_matrix @ pnr_matrix.T) > 0).astype(np.bool_)
-    tc.cp_matrix = (cp_matrix & temp_cp_matrix).astype(np.bool_)
+    cp_matrix = (cp_matrix & temp_cp_matrix).astype(np.bool_)
+    # np.fill_diagonal(cp_matrix, 1)
+    tc.cp_matrix = cp_matrix
     return tc
 
 
@@ -78,14 +80,14 @@ def compute_depart_01_matrix_pre_pnr(
     tc = trip_cluster
     trips = tc.trips
     nrow, ncol = tc.nrow, tc.ncol
+    cp_matrix = tc.cp_matrix
     # simple method
     depart_lst = np.array(trips['new_min'].tolist()).reshape((1, -1))  # depart minute
     mat = np.tile(depart_lst.transpose(), (1, ncol))
     mat = np.tile(depart_lst, (nrow, 1)) - mat  # depart time difference (driver's depart - pax depart)
     
     # departure time difference should be within Delta1 minutes for both parties
-    cp_matrix = (tc.cp_matrix &
-                 (np.absolute(mat) <= Delta1)).astype(np.bool_)
+    cp_matrix = (cp_matrix & (np.absolute(mat) <= Delta1)).astype(np.bool_)
     if default_rule:
         # criterion 1. driver should leave earlier than the passenger
         cp_matrix = (cp_matrix & (mat >= 0)).astype(np.bool_)
@@ -151,6 +153,7 @@ def compute_reroute_01_matrix_pnr(
     # need to mask tt and ml matrix at un-carpoolable positions also
     tc.tt_matrix[cp_matrix == 0] = np.nan
     tc.ml_matrix[cp_matrix == 0] = np.nan
+    tc.cp_matrix = cp_matrix
     return tc
 
 

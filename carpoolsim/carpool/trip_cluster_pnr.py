@@ -36,17 +36,8 @@ class TripClusterPNR(TripClusterAbstract):
         # information about PNR access for each traveler
         self.pnr_matrix = np.full((N, pnr_ncol), 1).astype(np.bool_)
         self.pnr_access_info = np.empty((N, pnr_ncol), dtype=object)
-        # 0-1 matrix for PNR travelers, start with all available and shrink by filters
-        self.cp_matrix = np.full((N, N), 1, dtype=np.bool_)
-        self.tt_matrix = np.full((N, N), np.nan, dtype="float32")
-        self.ml_matrix = np.full((N, N), np.nan, dtype="float32")
         # "final assigned" PNR between two travelers (an extra matrix for PNR mode)
         self.cp_pnr = np.full((N, N), -1, dtype="int16")
-        # A CENTRIC VIEW OF DRIVERS (3 trip segments of a carpool driver)
-        # p1: pickup travel time for driver
-        # p2: shared travel time for driver and passenger
-        # p3: drop-off travel time for driver
-        self.tt_matrix_p2 = np.full((N, N), np.nan, dtype="float32")
     
     @property
     def pnr_ncol(self):
@@ -308,7 +299,6 @@ class TripClusterPNR(TripClusterAbstract):
             np.fill_diagonal(self.ml_matrix, temp_diag_ml)
         indexes_pairs = np.argwhere(self.cp_matrix == 1)
         indexes_pairs = [index for index in indexes_pairs if index[0] != index[1]]
-        # print('PNR Indices matching0: \n', indexes_pairs)
         for index in indexes_pairs:
             self.compute_carpool(index[0], index[1], fixed_role=True)
 
