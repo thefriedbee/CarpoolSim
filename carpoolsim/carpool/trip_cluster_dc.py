@@ -17,7 +17,7 @@ from carpoolsim.carpool.util.filters_dc import (
     compute_depart_01_matrix_pre,
     compute_reroute_01_matrix
 )
-from carpoolsim.config.config import CPMode, Config
+from carpoolsim.config.config import CPMode, TripClusterConfig
 
 
 # Direct Carpool Mode
