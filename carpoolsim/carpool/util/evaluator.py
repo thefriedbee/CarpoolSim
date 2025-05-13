@@ -94,7 +94,7 @@ def evaluate_individual_trips_sim(
     trip_summary_df = trip_summary_df.assign(
         **{'before_time': 0.0, 'before_dist': 0.0,
            'after_time': 0.0, 'after_dist': 0.0,
-           'MODE': CPMode.SOV, 'as_passenger': False, 
+           'MODE': CPMode.SOV.value, 'as_passenger': False, 
            'partner_idx': 0, 'station': -1})
     
     # for each traveler, find its SOV trip time/distances,
@@ -106,7 +106,7 @@ def evaluate_individual_trips_sim(
         if d == p:  # drive alone (SOV)
             row_d = [soloTimes[d], soloDists[d], soloTimes[d], soloDists[d], -1]
             trip_summary_df.loc[d_idx, info_cols] = row_d
-            trip_summary_df.loc[d_idx, role_cols] = [CPMode.SOV, False, d]
+            trip_summary_df.loc[d_idx, role_cols] = [CPMode.SOV.value, False, d]
             continue
         
         # carpool case
@@ -115,6 +115,7 @@ def evaluate_individual_trips_sim(
             row_d = [soloTimes[d], soloDists[d], tt_matrix[d, p], ml_matrix[d, p], -1]
             row_p = [soloTimes[p], soloDists[p], soloTimes[p], soloDists[p], -1]
         elif mc_matrix[d, p] == CPMode.PNR.value:  # PNR mode
+            sid = cp_pnr[d, p]
             mode = CPMode.PNR
             row_d = [soloTimes[d], soloDists[d], tt_matrix[d, p], ml_matrix[d, p], sid]
             pnr_pass_time, pnr_pass_dist = pnr_access_info[p, sid][1:3]

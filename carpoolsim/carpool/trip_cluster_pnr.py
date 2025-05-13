@@ -106,6 +106,7 @@ class TripClusterPNR(TripClusterAbstract):
         if len(pnr_lst) == 0:
             return None
         if len(pnr_lst) == 1:
+            self.cp_pnr[int_idx1, int_idx2] = pnr_lst[0]
             return pnr_lst[0]
         # if can share multiple stations
         time_lst = []

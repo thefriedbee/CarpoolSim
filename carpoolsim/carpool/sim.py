@@ -106,7 +106,9 @@ class SimulationTask:
     def optimize_results(self):
         import carpoolsim.carpool_solver.bipartite_solver as tg
         bipartite_obj = tg.CarpoolBipartite(self.cp_matrix, self.tt_matrix)
-        num_pair, paired_lst = bipartite_obj.solve_bipartite_conflicts_naive()
+        num_pair, paired_lst = bipartite_obj.solve_bipartite_conflicts_naive(
+            drop_sov_pairs=False
+        )
         self.num_pair = num_pair
         self.paired_lst = paired_lst
 
