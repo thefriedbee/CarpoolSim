@@ -17,7 +17,7 @@ from carpoolsim.carpool.util.filters_dc import (
     compute_depart_01_matrix_pre,
     compute_reroute_01_matrix
 )
-from carpoolsim.config.config import CPMode
+from carpoolsim.config.config import CPMode, Config
 
 
 # Direct Carpool Mode
@@ -238,41 +238,42 @@ class TripClusterDC(TripClusterAbstract):
             self.compute_carpool(index[0], index[1], fixed_role=True)
 
     def compute_in_one_step(
-        self, mu1: float = 1.5, mu2: float = 0.1, dst_max: float = 5 * 5280,
-        Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
-        delta: float = 15, gamma: float = 1.5, ita: float = 0.5,
-        print_mat: bool = False, run_solver: bool = True,
+        self, config: TripClusterConfig,
+        # mu1: float = 1.5, mu2: float = 0.1, dst_max: float = 5 * 5280,
+        # Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
+        # delta: float = 15, gamma: float = 1.5, ita: float = 0.5,
+        # print_mat: bool = False, run_solver: bool = True,
     ) -> tuple[int, list[tuple[int, int]]]:
         # step 1. compute drive alone info
         self.td.compute_sov_info()
         tt_lst, dst_lst = self.td.soloTimes, self.td.soloDists
         self.fill_diagonal(tt_lst, dst_lst)
-        self._print_matrix(step=1, print_mat=print_mat)
+        self._print_matrix(step=1, print_mat=config.print_mat)
 
         # step 2. check departure time difference to filter
-        compute_depart_01_matrix_pre(self, Delta1=Delta1)
-        self._print_matrix(step=2, print_mat=print_mat)
+        compute_depart_01_matrix_pre(self, Delta1=config.Delta1)
+        self._print_matrix(step=2, print_mat=config.print_mat)
 
         # step 3. a set of filter based on Euclidean distance between coordinates
-        self.compute_pickup_01_matrix(threshold_dist=dst_max, mu1=mu1, mu2=mu2)
-        self._print_matrix(step=3, print_mat=print_mat)
+        self.compute_pickup_01_matrix(threshold_dist=config.dist_max, mu1=config.mu1, mu2=config.mu2)
+        self._print_matrix(step=3, print_mat=config.print_mat)
 
         # step 4. evaluate information using the actual traveling paths
         self.evaluate_carpoolable_trips(reset_off_diag=False)
-        self._print_matrix(step=4, print_mat=print_mat)
+        self._print_matrix(step=4, print_mat=config.print_mat)
 
         # step 5. filter by the maximum waiting time for the driver at pickup location
-        self.compute_depart_01_matrix_post(Delta2=Delta2, Gamma=Gamma)
-        self._print_matrix(step=5, print_mat=print_mat)
+        self.compute_depart_01_matrix_post(Delta2=config.Delta2, Gamma=config.Gamma)
+        self._print_matrix(step=5, print_mat=config.print_mat)
 
         # step 6. filter by real computed waiting time (instead of coordinates before)
-        self = compute_reroute_01_matrix(self, delta=delta, gamma=gamma, ita=ita)
-        self._print_matrix(step=6, print_mat=print_mat)
+        self = compute_reroute_01_matrix(self, delta=config.delta, gamma=config.gamma, ita=config.ita)
+        self._print_matrix(step=6, print_mat=config.print_mat)
 
         # step 7. compute optimal bipartite pairing
-        if run_solver:
+        if config.run_solver:
             num_pair, pairs = self.compute_optimal_bipartite()
-            self._print_matrix(step=7, print_mat=print_mat)
+            self._print_matrix(step=7, print_mat=config.print_mat)
             self.num_paired = num_pair
             self.paired_lst = pairs
             return num_pair, pairs

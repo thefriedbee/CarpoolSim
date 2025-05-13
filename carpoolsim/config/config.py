@@ -23,15 +23,18 @@ CPMode_MAP = {
 class SolveMethod(Enum):
     # available solvers
     bt = 1  # bipartite matching
-    lp = 2  # linear programming solver
+    # lp = 2  # linear programming solver
 
 
-class Config:
+# Configuration for EACH CARPOOL MODE
+class TripClusterConfig:
     def __init__(self):
+        # basic settings
         self.solver = SolveMethod.bt
-        self.modes = [CPMode.PNR, CPMode.DC]
+        self.mode = CPMode.DC
         self.print_mat = False
         self.plot_all = False
+        self.run_solver = True
         # Euclidean distance filter
         self.mu1 = 1.5  # carpool distance / total distance (driver)
         self.mu2 = 0.1  # shared distance / total distance (driver)
@@ -44,7 +47,7 @@ class Config:
         self.delta = 10  # reroute time in minutes
         self.gamma = 1.3  # carpool time / SOV travel time (for the driver)
         self.ita = 0.9  # shared travel time / passenger travel time
-        self.ita_pnr = 0.5  # shared travel time / passenger travel time (for PNR)
+        # self.ita_pnr = 0.5  # shared travel time / passenger travel time (for PNR)
 
     def set_config(self, config: dict):
         for key, value in config.items():
@@ -54,6 +57,9 @@ class Config:
                 setattr(self, key, value)
 
 
+# class ExperimentConfig:
+#     def __init__(self):
+#         self.trip_cluster_config = TripClusterConfig()
 
 
 
