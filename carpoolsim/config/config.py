@@ -1,14 +1,14 @@
 """
 Dataclasses to store all configurations/parameters of the experiment.
 """
-from dataclasses import dataclass, Enum, auto
+from dataclasses import dataclass
+from enum import Enum, auto
 
 
-# available match modes
-class MatchMode(Enum):
-    # for both modes, represent using a list of match modes
-    dc = auto()  # direct carpool
-    pnr = auto()  # Park-and-Ride carpool
+class CPMode(Enum):
+    SOV = "SOV"
+    DC = "DC"
+    PNR = "PNR"
 
 
 class SolveMethod(Enum):
