@@ -41,7 +41,7 @@ class TripClusterPNR(TripClusterAbstract):
         self.tt_matrix = np.full((N, N), np.nan, dtype="float32")
         self.ml_matrix = np.full((N, N), np.nan, dtype="float32")
         # "final assigned" PNR between two travelers (an extra matrix for PNR mode)
-        self.cp_pnr = np.full((N, N), -1, dtype="int8")
+        self.cp_pnr = np.full((N, N), -1, dtype="int16")
         # A CENTRIC VIEW OF DRIVERS (3 trip segments of a carpool driver)
         # p1: pickup travel time for driver
         # p2: shared travel time for driver and passenger
@@ -81,9 +81,9 @@ class TripClusterPNR(TripClusterAbstract):
             p1, t1, d1 = dynamic_shortest_path_search(network, O1, M1, O1_taz, M1_taz)
             p2, t2, d2 = dynamic_shortest_path_search(network, M1, D1, M1_taz, D1_taz)
             # return access info (nodes, time, and distance), and travel time goes through PNR station
-            return p1, t1, d1, t1+t2
-        p1, t1, d1, t_all = calculateAccess(trip_row, pnr_row)
-        self.pnr_access_info[trip_id, station_id] = [p1, t1, d1, t_all]
+            return p1, t1, d1, t1+t2, d1+d2
+        p1, t1, d1, t_all, d_all = calculateAccess(trip_row, pnr_row)
+        self.pnr_access_info[trip_id, station_id] = [p1, t1, d1, t_all, d_all]
 
     def _check_trips_best_pnr(
         self, 
@@ -247,13 +247,13 @@ class TripClusterPNR(TripClusterAbstract):
             M1, M_taz = pnr_row['node'], pnr_row['taz']
             # print("trip_id: {}, station_id: {}".format(int_idx1, station_id))
             if not reversed:  # O1 ==> M1 ==> D2 ==> D1
-                p0, t0, d0, t_all0 = self.pnr_access_info[int_idx2, station_id]  # O2 ==> M1
-                p1, t1, d1, t_all1 = self.pnr_access_info[int_idx1, station_id]  # O1 ==> M1
+                p0, t0, d0, __, __ = self.pnr_access_info[int_idx2, station_id]  # O2 ==> M1
+                p1, t1, d1, __, __ = self.pnr_access_info[int_idx1, station_id]  # O1 ==> M1
                 p2, t2, d2 = dynamic_shortest_path_search(network, M1, D2, M_taz, D2_taz)  # M1 ==> D2
                 p3, t3, d3 = dynamic_shortest_path_search(network, D2, D1, D2_taz, D1_taz)  # D2 ==> D1
             else:  # O2 ==> M1 ==> D1 == D2
-                p0, t0, d0, t_all0 = self.pnr_access_info[int_idx1, station_id]  # O1 ==> M1
-                p1, t1, d1, t_all1 = self.pnr_access_info[int_idx2, station_id]  # O2 ==> M1
+                p0, t0, d0, __, __ = self.pnr_access_info[int_idx1, station_id]  # O1 ==> M1
+                p1, t1, d1, __, __ = self.pnr_access_info[int_idx2, station_id]  # O2 ==> M1
                 p2, t2, d2 = dynamic_shortest_path_search(network, M1, D1, M_taz, D1_taz)  # M1 ==> D1
                 p3, t3, d3 = dynamic_shortest_path_search(network, D1, D2, D2_taz, D2_taz)  # D1 ==> D2
             if print_dist:
@@ -299,7 +299,7 @@ class TripClusterPNR(TripClusterAbstract):
         return ((p2_ml_p0_pnr + d1_ml_p1_pnr + d1_ml_p2_pnr + d1_ml_p3_pnr),
                 (p2_p_p0_pnr, d1_p_p1_pnr, d1_p_p2_pnr, d1_p_p3_pnr), sid)
 
-    def compute_carpoolable_trips_pnr(self, reset_off_diag: bool = False) -> None:
+    def compute_carpoolable_trips(self, reset_off_diag: bool = False) -> None:
         """
         Instead of computing all combinations, only compute all carpool-able trips.
         :param reset_off_diag: if True, reset all carpool trips information EXCEPT drive alone trips
@@ -359,7 +359,7 @@ class TripClusterPNR(TripClusterAbstract):
         self._print_matrix(step=4, print_mat=print_mat)
 
         # step 5. combine all aforementioned filters to generate one big filter
-        self.compute_carpoolable_trips_pnr(reset_off_diag=False)
+        self.compute_carpoolable_trips(reset_off_diag=False)
         self._print_matrix(step=5, print_mat=print_mat)
 
         # step 6. filter by the maximum waiting time for the driver at pickup location

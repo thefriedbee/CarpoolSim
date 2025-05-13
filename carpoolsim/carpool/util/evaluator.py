@@ -50,9 +50,9 @@ def evaluate_individual_trips_dc(
         
         # carpool case
         row_d = [soloTimes[d], soloDists[d], tt_matrix[d, p], ml_matrix[d, p], -1]
-        row_d = [round(r, 3) for r in row_d]
+        row_d = [round(r, 2) for r in row_d]
         row_p = [soloTimes[p], soloDists[p], soloTimes[p], soloDists[p], -1]
-        row_p = [round(r, 3) for r in row_p]        
+        row_p = [round(r, 2) for r in row_p]        
 
         # for passenger, travel is same as before
         trip_summary_df.loc[p_idx, info_cols] = row_p
@@ -118,12 +118,12 @@ def evaluate_individual_trips_sim(
             sid = cp_pnr[d, p]
             mode = CPMode.PNR
             row_d = [soloTimes[d], soloDists[d], tt_matrix[d, p], ml_matrix[d, p], sid]
-            pnr_pass_time, pnr_pass_dist = pnr_access_info[p, sid][1:3]
+            pnr_pass_time, pnr_pass_dist = pnr_access_info[p, sid][3:5]
             row_p = [soloTimes[p], soloDists[p], pnr_pass_time, pnr_pass_dist, sid]
         else:
             raise ValueError(f"Invalid mode choice matrix: {mc_matrix[d, p]}")
-        row_d = [round(r, 3) for r in row_d]
-        row_p = [round(r, 3) for r in row_p]        
+        row_d = [round(r, 2) for r in row_d]
+        row_p = [round(r, 2) for r in row_p]        
 
         # for passenger, travel is same as before
         trip_summary_df.loc[d_idx, info_cols] = row_d

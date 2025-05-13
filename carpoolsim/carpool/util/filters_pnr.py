@@ -30,7 +30,7 @@ def generate_pnr_trip_map_filt(
     for ind_one in ind:
         trip_id, station_id = ind_one
         tc.compute_pnr_access(trip_id, station_id)
-        __, t1, __, t_all = pnr_access_info[trip_id, station_id]
+        __, t1, __, t_all, __ = pnr_access_info[trip_id, station_id]
         # get travel alone time
         t2 = soloTimes[trip_id]
         # 2 cases not available for PNR trip

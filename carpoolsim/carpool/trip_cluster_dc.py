@@ -32,7 +32,6 @@ class TripClusterDC(TripClusterAbstract):
         int_idx2: int,
         fixed_role: bool = False,
         print_dist: bool = False,
-        fill_mat: bool = True,
     ):
         """
         Given the integer index of two trips (of the trip DataFrame self.df),
@@ -41,7 +40,6 @@ class TripClusterDC(TripClusterAbstract):
         Note that park and ride scenarios 3 and 4 are in the function "compute_carpool_pnr"
         :param int_idx1: integer index for the first traveler A
         :param int_idx2: integer index for the second traveler B
-        :param fill_mat: store computation results to matrices
         :param print_dist: print trip plans (for debugging)
 
         :param fixed_role: if True, int_idx1 is for the driver, int_idx2 is for the passenger
@@ -100,18 +98,17 @@ class TripClusterDC(TripClusterAbstract):
             d2_tt_p1, d2_tt_p2, d2_tt_p3, d2_ml_p1, d2_ml_p2, d2_ml_p3, d2_p_p1, d2_p_p2, d2_p_p3 = \
                 calculateCarpool(trip1, trip2, int_idx1, int_idx2, reversed=True)
         # let's fill the matrix, store vehicular hours of a trip
-        if fill_mat:
-            self.tt_matrix[int_idx1][int_idx2] = d1_tt_p1 + d1_tt_p2 + d1_tt_p3
-            self.tt_matrix_p1[int_idx1][int_idx2] = d1_tt_p1
-            self.tt_matrix_p3[int_idx1][int_idx2] = d1_tt_p3
-            self.ml_matrix[int_idx1][int_idx2] = d1_ml_p1 + d1_ml_p2 + d1_ml_p3
-            # print(f"ml_matrix[{int_idx1}][{int_idx2}]:{self.ml_matrix[int_idx1][int_idx2]}")
-            if not fixed_role:
-                self.tt_matrix[int_idx2][int_idx1] = d2_tt_p1 + d2_tt_p2 + d2_tt_p3
-                self.tt_matrix_p1[int_idx2][int_idx1] = d2_tt_p1
-                self.tt_matrix_p3[int_idx2][int_idx1] = d2_tt_p3
-                self.ml_matrix[int_idx2][int_idx1] = d2_ml_p1 + d2_ml_p2 + d2_ml_p3
-                # print(f"ml_matrix[idx2][idx1]:{self.ml_matrix[int_idx2][int_idx1]}")
+        self.tt_matrix[int_idx1][int_idx2] = d1_tt_p1 + d1_tt_p2 + d1_tt_p3
+        self.tt_matrix_p1[int_idx1][int_idx2] = d1_tt_p1
+        self.tt_matrix_p3[int_idx1][int_idx2] = d1_tt_p3
+        self.ml_matrix[int_idx1][int_idx2] = d1_ml_p1 + d1_ml_p2 + d1_ml_p3
+        # print(f"ml_matrix[{int_idx1}][{int_idx2}]:{self.ml_matrix[int_idx1][int_idx2]}")
+        if not fixed_role:
+            self.tt_matrix[int_idx2][int_idx1] = d2_tt_p1 + d2_tt_p2 + d2_tt_p3
+            self.tt_matrix_p1[int_idx2][int_idx1] = d2_tt_p1
+            self.tt_matrix_p3[int_idx2][int_idx1] = d2_tt_p3
+            self.ml_matrix[int_idx2][int_idx1] = d2_ml_p1 + d2_ml_p2 + d2_ml_p3
+            # print(f"ml_matrix[idx2][idx1]:{self.ml_matrix[int_idx2][int_idx1]}")
 
         # dists_1, links_1, dists_2, links_2
         if not fixed_role:
@@ -245,10 +242,10 @@ class TripClusterDC(TripClusterAbstract):
             self.compute_carpool(index[0], index[1], fixed_role=True)
 
     def compute_in_one_step(
-        self,  print_mat: bool = False,
-        mu1: float = 1.5, mu2: float = 0.1, dst_max: float = 5 * 5280,
+        self, mu1: float = 1.5, mu2: float = 0.1, dst_max: float = 5 * 5280,
         Delta1: float = 15, Delta2: float = 10, Gamma: float = 0.2,  # for depart diff and wait time
         delta: float = 15, gamma: float = 1.5, ita: float = 0.5,
+        print_mat: bool = False,
     ) -> tuple[int, list[tuple[int, int]]]:
         # step 1. compute drive alone info
         self.td.compute_sov_info()

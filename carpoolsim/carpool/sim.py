@@ -86,16 +86,19 @@ class SimulationTask:
                 (mc_matrix == -1) & (tc.cp_matrix > 0), 
                 tc_mode.value, mc_matrix
             )
+        
+        for tc in self.trip_clusters:
+            mode = tc.mode.value
             cp_matrix = np.where(
-                (cp_matrix == 0) & (tc.cp_matrix > 0), 
+                (cp_matrix == 0) & (tc.cp_matrix > 0) & (mc_matrix == mode), 
                 tc.cp_matrix, cp_matrix
             )
             tt_matrix = np.where(
-                (tt_matrix == 0) & (tc.tt_matrix > 0), 
+                (tt_matrix == 0) & (tc.tt_matrix > 0) & (mc_matrix == mode), 
                 tc.tt_matrix, tt_matrix
             )
             ml_matrix = np.where(
-                (ml_matrix == 0) & (tc.ml_matrix > 0), 
+                (ml_matrix == 0) & (tc.ml_matrix > 0) & (mc_matrix == mode), 
                 tc.ml_matrix, ml_matrix
             )
         self.mc_matrix = mc_matrix
