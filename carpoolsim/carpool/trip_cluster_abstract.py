@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from carpoolsim.carpool.trip_demands import TripDemands
-from carpoolsim.config.config import CPMode
+from carpoolsim.config import CPMode
 
 
 class TripClusterAbstract(ABC):
