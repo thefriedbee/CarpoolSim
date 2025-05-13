@@ -119,9 +119,11 @@ def evaluate_individual_trips_sim(
             sid = cp_pnr[d, p]
             mode = CPMode.PNR
             pnr_pass_time, pnr_pass_dist = pnr_access_info[d, sid][3:5]
-            print(f"{d}, {p}, {sid}, {tt_matrix[d, p]}, {tt_matrix[p, d]}")
+            # print(f"d:{d}, p:{p}, sid:{sid}") 
+            # print(f"driver: cp: {cp_matrix[d, p]}, tt:{tt_matrix[d, p]:.2f}, ml:{ml_matrix[d, p]:.2f}, time:{pnr_pass_time:.2f}, dist:{pnr_pass_dist:.2f}")
             row_d = [soloTimes[d], soloDists[d], pnr_pass_time, pnr_pass_dist, sid]
             pnr_pass_time, pnr_pass_dist = pnr_access_info[p, sid][3:5]
+            # print(f"passenger: cp: {cp_matrix[p, d]}, tt:{tt_matrix[p, d]:.2f}, ml:{ml_matrix[p, d]:.2f}, time:{pnr_pass_time:.2f}, dist:{pnr_pass_dist:.2f}")
             row_p = [soloTimes[p], soloDists[p], pnr_pass_time, pnr_pass_dist, sid]
         else:
             raise ValueError(f"Invalid mode choice matrix: {mc_matrix[d, p]}")
