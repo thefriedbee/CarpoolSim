@@ -20,25 +20,22 @@ class SolveMethod(Enum):
 class Config:
     def __init__(self):
         self.solver = SolveMethod.bt
-        self.mode = CPMode.PNR
+        self.modes = [CPMode.PNR, CPMode.DC]
         self.print_mat = False
         self.plot_all = False
         # Euclidean distance filter
-        self.mu1 = 1.5
-        self.mu2 = 0.1
-        self.dist_max = 5*5280
+        self.mu1 = 1.5  # carpool distance / total distance (driver)
+        self.mu2 = 0.1  # shared distance / total distance (driver)
+        self.dist_max = 5*5280  # pickup distance (driver)
         # time difference
         self.Delta1 = 15  # SOV departure time difference
         self.Delta2 = 10  # carpool waiting time
         self.Gamma = 0.2  # waiting time / passenger travel time
         # reroute time constraints
-        self.delta = 10
-        self.gamma = 1.3
-        self.ita = 0.9
-        # self.ita_pnr = 0.5
-        pass
-
-    pass
+        self.delta = 10  # reroute time in minutes
+        self.gamma = 1.3  # carpool time / SOV travel time (for the driver)
+        self.ita = 0.9  # shared travel time / passenger travel time
+        self.ita_pnr = 0.5  # shared travel time / passenger travel time (for PNR)
 
 
 
