@@ -110,13 +110,11 @@ def evaluate_individual_trips_sim(
             continue
         
         # carpool case
-        sid = cp_pnr[d, p]
-        print(d, p, mc_matrix[d, p])
-        if mc_matrix[d, p] == 1:  # DC mode
+        if mc_matrix[d, p] == CPMode.DC.value:  # DC mode
             mode = CPMode.DC
-            row_d = [soloTimes[d], soloDists[d], tt_matrix[d, p], ml_matrix[d, p], sid]
-            row_p = [soloTimes[p], soloDists[p], soloTimes[p], soloDists[p], sid]
-        elif mc_matrix[d, p] == 2:  # PNR mode
+            row_d = [soloTimes[d], soloDists[d], tt_matrix[d, p], ml_matrix[d, p], -1]
+            row_p = [soloTimes[p], soloDists[p], soloTimes[p], soloDists[p], -1]
+        elif mc_matrix[d, p] == CPMode.PNR.value:  # PNR mode
             mode = CPMode.PNR
             row_d = [soloTimes[d], soloDists[d], tt_matrix[d, p], ml_matrix[d, p], sid]
             pnr_pass_time, pnr_pass_dist = pnr_access_info[p, sid][1:3]
@@ -129,8 +127,8 @@ def evaluate_individual_trips_sim(
         # for passenger, travel is same as before
         trip_summary_df.loc[d_idx, info_cols] = row_d
         trip_summary_df.loc[p_idx, info_cols] = row_p
-        trip_summary_df.loc[d_idx, role_cols] = [mode, False, p]
-        trip_summary_df.loc[p_idx, role_cols] = [mode, True, d]
+        trip_summary_df.loc[d_idx, role_cols] = [mode.value, False, p]
+        trip_summary_df.loc[p_idx, role_cols] = [mode.value, True, d]
     
     return trip_summary_df
 

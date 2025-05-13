@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from carpoolsim.carpool.trip_demands import TripDemands
+from carpoolsim.config.config import CPMode
 
 
 class TripClusterAbstract(ABC):
@@ -12,6 +13,7 @@ class TripClusterAbstract(ABC):
         self,
         trip_demands: TripDemands,
     ):
+        self.mode = None
         # only store the trips information,
         # most other functions (e.g, query paths) are "outsourced" to free functions
         self.td = trip_demands

@@ -17,11 +17,14 @@ from carpoolsim.carpool.util.filters_dc import (
     compute_depart_01_matrix_pre,
     compute_reroute_01_matrix
 )
+from carpoolsim.config.config import CPMode
+
 
 # Direct Carpool Mode
 class TripClusterDC(TripClusterAbstract):
     def __init__(self, trip_demands: TripDemands):
         super().__init__(trip_demands)
+        self.mode = CPMode.DC
 
     def compute_carpool(
         self,

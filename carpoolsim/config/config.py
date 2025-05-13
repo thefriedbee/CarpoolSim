@@ -6,9 +6,9 @@ from enum import Enum, auto
 
 
 class CPMode(Enum):
-    SOV = "SOV"
-    DC = "DC"
-    PNR = "PNR"
+    SOV = 1
+    DC = 2
+    PNR = 3
 
 
 class SolveMethod(Enum):

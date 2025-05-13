@@ -21,6 +21,7 @@ from carpoolsim.carpool.util.filters_pnr import (
     compute_reroute_01_matrix_pnr,
     compute_depart_01_matrix_post_pnr
 )
+from carpoolsim.config.config import CPMode
 
 
 class TripClusterPNR(TripClusterAbstract):
@@ -29,6 +30,7 @@ class TripClusterPNR(TripClusterAbstract):
         trip_demands: TripDemands
     ):
         super().__init__(trip_demands)
+        self.mode = CPMode.PNR
         pnr_ncol = len(self.parking_lots)
         N = len(self.td.trips)
         # information about PNR access for each traveler

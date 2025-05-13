@@ -11,6 +11,7 @@ from carpoolsim.carpool.util.evaluator import (
     evaluate_individual_trips_sim,
     summarize_results,
 )
+from carpoolsim.config.config import CPMode
 
 
 @dataclass
@@ -66,11 +67,10 @@ class SimulationTask:
     def run_in_one_step(self):
         for tc in self.trip_clusters:
             num_pair, _ = tc.compute_in_one_step(print_mat=False)
-            print(f"Mode {tc.__class__.__name__}: {num_pair} pairs")
+            print(f"Mode {tc.mode}: {num_pair} pairs")
             print(tc.paired_lst)
             print()
-            # store important information from cluster
-            if tc.__class__.__name__ == "TripClusterPNR":
+            if tc.mode == CPMode.PNR:
                 self.cp_pnr = tc.cp_pnr
                 self.pnr_access_info = tc.pnr_access_info
 
@@ -80,10 +80,11 @@ class SimulationTask:
         tt_matrix = self.tt_matrix
         ml_matrix = self.ml_matrix
         # enumerate each solution and fill results in order
-        for mode_idx, tc in enumerate(self.trip_clusters):
+        for tc in self.trip_clusters:
+            tc_mode = tc.mode
             mc_matrix = np.where(
                 (mc_matrix == -1) & (tc.cp_matrix > 0), 
-                mode_idx, mc_matrix
+                tc_mode.value, mc_matrix
             )
             cp_matrix = np.where(
                 (cp_matrix == 0) & (tc.cp_matrix > 0), 
@@ -103,7 +104,6 @@ class SimulationTask:
         self.ml_matrix = ml_matrix
 
     def optimize_results(self):
-        # import the solver here
         import carpoolsim.carpool_solver.bipartite_solver as tg
         bipartite_obj = tg.CarpoolBipartite(self.cp_matrix, self.tt_matrix)
         num_pair, paired_lst = bipartite_obj.solve_bipartite_conflicts_naive()
