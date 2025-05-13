@@ -4,7 +4,7 @@ Move all functions evaluating the carpool assignments results.
 import pandas as pd
 
 from carpoolsim.carpool.trip_cluster_abstract import TripClusterAbstract
-from carpoolsim.config.config import CPMode
+from carpoolsim.config import CPMode
 
 
 def evaluate_individual_trips_sim(

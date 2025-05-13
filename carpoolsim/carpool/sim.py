@@ -11,7 +11,7 @@ from carpoolsim.carpool.util.evaluator import (
     evaluate_individual_trips_sim,
     summarize_results,
 )
-from carpoolsim.config.config import CPMode
+from carpoolsim.config import CPMode
 
 
 @dataclass

@@ -4,8 +4,16 @@ Dataclasses to store all configurations/parameters of the experiment.
 from dataclasses import dataclass
 from enum import Enum, auto
 
+import pandas as pd
 import geopandas as gpd
 import networkx as nx
+
+import carpoolsim.dataclass.utils as ut
+from carpoolsim.network_prepare import (
+    pnr_add_projection, 
+    pnr_filter_within_TAZs,
+    build_carpool_network
+)
 
 
 class CPMode(Enum):
@@ -61,20 +69,44 @@ class TripClusterConfig:
 
 
 class NetworkConfig:
-    def __init__(self):
+    def __init__(
+        self, 
+        links: gpd.GeoDataFrame, 
+        nodes: gpd.GeoDataFrame,
+        tazs: gpd.GeoDataFrame,
+        walk_speed: float = 30,
+        grid_size: int = 25000,
+        ntp_dist_thresh: int = 5280,
+    ):
         # basic networks
-        self.links: gpd.GeoDataFrame = None
-        self.nodes: gpd.GeoDataFrame = None
-        self.DG: nx.DiGraph = None  # networkx directed graph
+        self.links: gpd.GeoDataFrame = self.preprocess_network(links, grid_size)
+        self.nodes: gpd.GeoDataFrame = nodes
+        self.tazs: gpd.GeoDataFrame = tazs
+        self.DG: nx.DiGraph = self.build_graph()  # networkx directed graph
         # in this application, it is actually the driving speed
         # to the nearest node in the network
-        self.walk_speed: float = 30  # mph
+        self.walk_speed: float = walk_speed  # mph
         # for searching nearby links by grouping links to grids with width 25000 ft. for efficiency in searching
-        self.grid_size: int = 25000.0  # in feet
+        self.grid_size: int = grid_size  # in feet
         # maximum distance to the nearest node in the network
-        self.ntp_dist_thresh: int = 5280.0  # in feet
+        self.ntp_dist_thresh: int = ntp_dist_thresh  # in feet
 
+    def preprocess_network(self, links: gpd.GeoDataFrame, grid_size: int) -> gpd.GeoDataFrame:
+        # preprocess traffic links
+        links = ut.preprocess_df_links(
+            links,
+            grid_size=grid_size
+        )
+        return links
 
+    def build_graph(self):
+        self.DG = build_carpool_network(self.links)
 
+    def preprocess_trips(self, trips: pd.DataFrame) -> pd.DataFrame:
+        trips = ut.preprocess_trips(trips, self.nodes)
+        return trips
 
-
+    def preprocess_pnr_lots(self, pnr_lots: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+        pnr_lots = pnr_filter_within_TAZs(pnr_lots, self.tazs)
+        pnr_lots = pnr_add_projection(pnr_lots, self)
+        return pnr_lots

@@ -282,13 +282,13 @@ def pnr_filter_within_TAZs(
 
 def pnr_add_projection(
     pnr_lots: gpd.GeoDataFrame,
-    dict_settings: dict,
+    network_config: 'NetworkConfig',
 ) -> pd.DataFrame:
-    df_links = dict_settings['network']['car']['links']
-
-    walk_speed = dict_settings['walk_speed']
-    grid_size = dict_settings['grid_size']
-    ntp_dist_thresh = dict_settings['ntp_dist_thresh']
+    df_links = network_config.links
+    # network parameters
+    walk_speed = network_config.walk_speed
+    grid_size = network_config.grid_size
+    ntp_dist_thresh = network_config.ntp_dist_thresh
 
     pnr_lots = add_xy(
         pnr_lots,
