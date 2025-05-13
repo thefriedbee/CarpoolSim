@@ -4,6 +4,9 @@ Dataclasses to store all configurations/parameters of the experiment.
 from dataclasses import dataclass
 from enum import Enum, auto
 
+import geopandas as gpd
+import networkx as nx
+
 
 class CPMode(Enum):
     SOV = 1
@@ -57,10 +60,19 @@ class TripClusterConfig:
                 setattr(self, key, value)
 
 
-# class ExperimentConfig:
-#     def __init__(self):
-#         self.trip_cluster_config = TripClusterConfig()
-
+class NetworkConfig:
+    def __init__(self):
+        # basic networks
+        self.links: gpd.GeoDataFrame = None
+        self.nodes: gpd.GeoDataFrame = None
+        self.DG: nx.DiGraph = None  # networkx directed graph
+        # in this application, it is actually the driving speed
+        # to the nearest node in the network
+        self.walk_speed: float = 30  # mph
+        # for searching nearby links by grouping links to grids with width 25000 ft. for efficiency in searching
+        self.grid_size: int = 25000.0  # in feet
+        # maximum distance to the nearest node in the network
+        self.ntp_dist_thresh: int = 5280.0  # in feet
 
 
 
