@@ -21,7 +21,7 @@ from carpoolsim.carpool.util.filters_pnr import (
     compute_reroute_01_matrix_pnr,
     compute_depart_01_matrix_post_pnr
 )
-from carpoolsim.config.config import CPMode, TripClusterConfig
+from carpoolsim.config import CPMode, TripClusterConfig
 
 
 class TripClusterPNR(TripClusterAbstract):
