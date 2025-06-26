@@ -39,25 +39,40 @@ class SolveMethod(Enum):
 
 # Configuration for EACH CARPOOL MODE
 class TripClusterConfig:
-    def __init__(self):
+    def __init__(
+        self,
+        mode: CPMode.DC,
+        print_mat: bool = False,
+        plot_all: bool = False,
+        run_solver: bool = True,
+        mu1: float = 1.5,
+        mu2: float = 0.1,
+        dist_max: float = 5*5280,
+        Delta1: float = 15,
+        Delta2: float = 10,
+        Gamma: float = 0.2,
+        delta: float = 10,
+        gamma: float = 1.3,
+        ita: float = 0.9,
+    ):
         # basic settings
         self.solver = SolveMethod.bt
-        self.mode = CPMode.DC
-        self.print_mat = False
-        self.plot_all = False
-        self.run_solver = True
+        self.mode = mode
+        self.print_mat = print_mat
+        self.plot_all = plot_all
+        self.run_solver = run_solver
         # Euclidean distance filter
-        self.mu1 = 1.5  # carpool distance / total distance (driver)
-        self.mu2 = 0.1  # shared distance / total distance (driver)
-        self.dist_max = 5*5280  # pickup distance (driver)
+        self.mu1 = mu1  # carpool distance / total distance (driver)
+        self.mu2 = mu2  # shared distance / total distance (driver)
+        self.dist_max = dist_max  # pickup distance (driver)
         # time difference
-        self.Delta1 = 15  # SOV departure time difference
-        self.Delta2 = 10  # carpool waiting time
-        self.Gamma = 0.2  # waiting time / passenger travel time
+        self.Delta1 = Delta1  # SOV departure time difference
+        self.Delta2 = Delta2  # carpool waiting time
+        self.Gamma = Gamma  # waiting time / passenger travel time
         # reroute time constraints
-        self.delta = 10  # reroute time in minutes
-        self.gamma = 1.3  # carpool time / SOV travel time (for the driver)
-        self.ita = 0.9  # shared travel time / passenger travel time
+        self.delta = delta  # reroute time in minutes
+        self.gamma = gamma  # carpool time / SOV travel time (for the driver)
+        self.ita = ita  # shared travel time / passenger travel time
         # self.ita_pnr = 0.5  # shared travel time / passenger travel time (for PNR)
 
     def set_config(self, config: dict):
@@ -82,7 +97,7 @@ class NetworkConfig:
         self.links: gpd.GeoDataFrame = self.preprocess_network(links, grid_size)
         self.nodes: gpd.GeoDataFrame = nodes
         self.tazs: gpd.GeoDataFrame = tazs
-        self.DG: nx.DiGraph = self.build_graph()  # networkx directed graph
+        self.network: nx.DiGraph = self.build_graph()  # networkx directed graph
         # in this application, it is actually the driving speed
         # to the nearest node in the network
         self.walk_speed: float = walk_speed  # mph
@@ -99,8 +114,8 @@ class NetworkConfig:
         )
         return links
 
-    def build_graph(self):
-        self.DG = build_carpool_network(self.links)
+    def build_graph(self) -> nx.DiGraph:
+        return build_carpool_network(self.links)
 
     def preprocess_trips(self, trips: pd.DataFrame) -> pd.DataFrame:
         trips = ut.preprocess_trips(trips, self.nodes)

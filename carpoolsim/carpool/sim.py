@@ -11,7 +11,10 @@ from carpoolsim.carpool.util.evaluator import (
     evaluate_individual_trips_sim,
     summarize_results,
 )
-from carpoolsim.config import CPMode
+from carpoolsim.config import (
+    CPMode,
+    TripClusterConfig,
+)
 
 
 @dataclass
@@ -38,11 +41,13 @@ class SimulationTask:
         infrastructure: Infrastructure,
         trips: pd.DataFrame,
         carpool_modes: list[TripClusterAbstract],  # list of classes, not instances!
+        mode_configs: list[TripClusterConfig],
     ):
         self.infrastructure = infrastructure
         self.trip_demands = TripDemands(trips, infrastructure)
         self.trip_demands.compute_sov_info()  # compute the SOV trips at once
         self.trip_clusters = [tc(self.trip_demands) for tc in carpool_modes]
+        self.mode_configs = mode_configs
         # combined cp results considering all modes
         self.mc_matrix = np.full((self.trip_demands.nrow, self.trip_demands.ncol), -1)
         self.cp_matrix = np.zeros((self.trip_demands.nrow, self.trip_demands.ncol))
@@ -65,8 +70,10 @@ class SimulationTask:
         np.fill_diagonal(self.ml_matrix, self.trip_demands.soloDists)
 
     def run_in_one_step(self):
-        for tc in self.trip_clusters:
-            num_pair, _ = tc.compute_in_one_step(print_mat=False)
+        for i, tc in enumerate(self.trip_clusters):
+            num_pair, _ = tc.compute_in_one_step(
+                config = self.mode_configs[i]
+            )
             print(f"Mode {tc.mode}: {num_pair} pairs")
             # print(tc.paired_lst)
             # print()
@@ -125,11 +132,13 @@ class SimulationWithTime:
         infrastructure: Infrastructure,
         trips: pd.DataFrame,
         carpool_modes: list[TripClusterAbstract],
+        mode_configs: list[TripClusterConfig],
         clock: Clock
     ):
         self.infrastructure = infrastructure
         self.trips = trips
         self.carpool_modes = carpool_modes
+        self.mode_configs = mode_configs
         self.clock = clock
         # summary results
         self.df_trips: pd.DataFrame | list[pd.DataFrame] = []
@@ -147,7 +156,8 @@ class SimulationWithTime:
         sim_task = SimulationTask(
             infrastructure = self.infrastructure,
             trips = trips1,
-            carpool_modes = self.carpool_modes
+            carpool_modes = self.carpool_modes,
+            mode_configs = self.mode_configs
         )
         # run the simulation
         sim_task.run_in_one_step()

@@ -7,16 +7,19 @@
 - Add a clustering module shrink down searching spaces
 
 
-
-How to refactor this code?
-- The class is too huge and too long...
-- 1. For each method in the class, move it to a function
-- 2. Test the new function for correctness
-- 3. In this way, the original function becomes much smaller
-- 4. Rewrite the model configuring parameters
+Two traffic modes are coupled (DC mode, PNR mode)...
+- Use two classes: One for DC mode; one for PNR mode (one class for one ridesharing mode)
+- Use a third manager class to combine multiple modes and solve potential conflicts among mode results
 
 
-Identify a chain of filters to apply those functions in a list...
+Consider to use a uniformed filters to filter out trips
+- Both riders must provide a sequence of links to travel on
+- The idea is to match the travelers
 
 
+## Consider new interface to refactor the model
+1. A trip cluster for a set of travelers. Only need to record the basic information of:
+   1. Original travel path/distance for each traveler
+2. A DC class to model DC shared trips
+3. A PNR class to model PNR shared trips
 
